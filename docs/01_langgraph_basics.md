@@ -13,7 +13,7 @@
 
 ---
 
-## 2. حوار الـ State والـ Reducers (مشكلة الـ Overwrite)
+## 2. الـ State والـ Reducers (مشكلة الـ Overwrite)
 
 ### المشكلة:
 في العادي جوة لانج جراف، الـ State بيحصل لها **Overwrite** مش تعديل ولا Append.
