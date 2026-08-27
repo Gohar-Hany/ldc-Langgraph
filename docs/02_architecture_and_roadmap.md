@@ -3,11 +3,11 @@
 
 ---
 
-## 🏢 1. سيناريو المشروع وأهدافه (Scenario & Objectives)
+## 1. سيناريو المشروع وأهدافه (Scenario & Objectives)
 
 بناء **Role-Based Enterprise AI Support Agent** باستخدام **LangGraph** ومربوط بـ **FastAPI REST API**.
 
-### 👥 مصفوفة الأدوار والصلاحيات (RBAC Matrix):
+### مصفوفة الأدوار والصلاحيات (RBAC Matrix):
 1. **Customer:** RAG Search + البحث في تذاكره الخاصة فقط.
 2. **Support Agent:** الصلاحيات السابقة + إنشاء وتعديل التذاكر + البحث في External APIs.
 3. **Senior Agent:** الصلاحيات السابقة + العمليات الحساسة (Sensitive Operations) بموافقة بشرية.
@@ -15,7 +15,7 @@
 
 ---
 
-## 🏛️ 2. المعمارية المعتمدة للمشروع (Modular Layered Architecture)
+## 2. المعمارية المعتمدة للمشروع (Modular Layered Architecture)
 
 ```text
 ldc-Langgraph/
@@ -76,7 +76,7 @@ ldc-Langgraph/
 
 ---
 
-## 🎯 3. الترتيب المنطقي للبناء (Execution Order)
+## 3. الترتيب المنطقي للبناء (Execution Order)
 
 1. **الخطوة 1: ملف الاعتماديات (`requirements.txt`)**
    - فحص واختيار أحدث وأدق نسخ مستقرة للمكتبات على PyPI.

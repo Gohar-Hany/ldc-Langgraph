@@ -1,10 +1,11 @@
-# Virtual Environments
+# Environment Files
+.env
+.env.*
+!.env.example
 .venv/
 venv/
 ENV/
 env/
-*.env
-*.venv
 
 # Python Bytecode & Cache
 __pycache__/
