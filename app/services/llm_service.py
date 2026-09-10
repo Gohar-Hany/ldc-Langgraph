@@ -65,8 +65,26 @@ class LLMService:
 
         logger.info("No active remote LLM client initialized. Using deterministic rule-based classifier.")
 
+    def get_chat_model(self) -> Optional[ChatOpenAI]:
+        """Returns the active ChatOpenAI model instance."""
+        return self._llm
+
     def get_structured_classifier(self):
         return self._structured_classifier
+
+    def call_structured(self, schema_cls, prompt: str, system_message: str = ""):
+        """Invokes the active LLM with structured output using schema_cls."""
+        if not self._llm:
+            raise RuntimeError("No active LLM initialized for structured call.")
+        
+        from langchain_core.messages import SystemMessage, HumanMessage
+        structured_llm = self._llm.with_structured_output(schema_cls)
+        messages = []
+        if system_message:
+            messages.append(SystemMessage(content=system_message))
+        messages.append(HumanMessage(content=prompt))
+        return structured_llm.invoke(messages)
+
 
     def classify_intent_fallback(self, text: str) -> IntentClassificationOutput:
         """
@@ -115,12 +133,17 @@ class LLMService:
             )
 
         # 6. Knowledge Search / RAG (Customer+)
-        if any(w in text_lower for w in ["how to", "vpn", "wifi", "policy", "documentation", "guide", "setup", "configure", "كيفية", "وثائق", "دليل", "واي فاي"]):
+        if any(w in text_lower for w in [
+            "how to", "vpn", "wifi", "wi-fi", "wireless", "policy", "documentation", 
+            "guide", "setup", "configure", "requirements", "password", "mfa", 
+            "hardware", "license", "licensing", "procurement", "كيفية", "وثائق", "دليل", "واي فاي", "سياسة"
+        ]):
             return IntentClassificationOutput(
                 intent=IntentType.KNOWLEDGE_SEARCH,
                 confidence=0.89,
                 reasoning="Message requests technical support guidelines or knowledge base documentation."
             )
+
 
         # 7. Greetings (Exact word boundary matching with Arabic support)
         greeting_patterns = [r"\bhello\b", r"\bhi\b", r"\bhey\b", r"\bgood morning\b", r"\bgood evening\b", r"\bgreetings\b", r"مرحبا", r"اهلا", r"السلام عليكم"]

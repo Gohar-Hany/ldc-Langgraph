@@ -23,17 +23,22 @@ async def send_chat_message(
     """
     logger.info(f"[API: /chat] User '{current_user.id}' ({current_user.role.value}) sent: '{body.message}'")
 
+    # Extract or generate persistent thread identifier
+    thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
+
     # Initial graph state input
     initial_state = {
         "user_id": current_user.id,
         "user_role": current_user.role,
         "raw_message": body.message,
-        "conversation_id": body.conversation_id,
+        "conversation_id": thread_id,
+        "thread_id": thread_id,
         "execution_trace": []
     }
 
-    # Execute graph synchronously / async
-    final_state = enterprise_agent_graph.invoke(initial_state)
+    # Execute graph with thread-level persistence configuration
+    config = {"configurable": {"thread_id": thread_id}}
+    final_state = enterprise_agent_graph.invoke(initial_state, config=config)
 
     execution_steps = [
         ExecutionStep(
@@ -50,6 +55,9 @@ async def send_chat_message(
         confidence=final_state.get("confidence", 1.0),
         user_role=current_user.role,
         is_authorized=final_state.get("is_authorized", True),
-        conversation_id=body.conversation_id,
+        conversation_id=thread_id,
+        thread_id=thread_id,
+        sources=final_state.get("rag_sources", []) or [],
         execution_trace=execution_steps
     )
+

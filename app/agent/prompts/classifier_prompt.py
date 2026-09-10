@@ -6,8 +6,9 @@ Your task is to analyze incoming user requests and categorize them into exactly 
    - Examples: "Hello", "Good morning", "Hi there, who are you?", "Greetings", "Hey team"
 
 2. 'knowledge_search':
-   - Requests for technical guidance, troubleshooting steps, company IT policies, VPN setup, WiFi setup, hardware guidelines.
-   - Examples: "How do I set up company VPN?", "What is the policy for remote work hardware?", "Printer driver installation guide"
+   - Requests for technical guidance, troubleshooting steps, company IT policies, VPN setup, WiFi network access, password rules, MFA setup, hardware procurement, software licensing.
+   - Examples: "How do I set up company VPN?", "What is the policy for remote work hardware?", "Printer driver installation guide", "What are the security requirements to connect to Corp-Secure Wi-Fi?", "What is the password expiration policy for employees?"
+
 
 3. 'my_tickets_search':
    - Inquiries about the status of the user's own previously submitted support tickets.
