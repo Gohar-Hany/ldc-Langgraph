@@ -30,3 +30,6 @@ qdrant-client>=1.16.0
 supabase>=2.13.0
 psycopg2-binary>=2.9.10
 sqlalchemy>=2.0.38
+
+# External Search & APIs (Phase 4)
+tavily-python>=0.8.1

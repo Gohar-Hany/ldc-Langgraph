@@ -100,6 +100,24 @@ class Settings(BaseSettings):
         description="Supabase Service Role or Anon API Key"
     )
 
+    # Tavily External Search Configuration (Phase 4)
+    TAVILY_API_KEY: str = Field(
+        default="",
+        description="Tavily Search API Key"
+    )
+    TAVILY_SEARCH_DEPTH: str = Field(
+        default="basic",
+        description="Tavily search depth: basic or advanced"
+    )
+    TAVILY_TIMEOUT_SECONDS: int = Field(
+        default=10,
+        description="Tavily API request timeout in seconds"
+    )
+    TAVILY_MAX_RESULTS: int = Field(
+        default=5,
+        description="Maximum search results returned by Tavily"
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:
