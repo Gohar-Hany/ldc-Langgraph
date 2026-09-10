@@ -71,11 +71,15 @@ def test_live_scenarios():
         print(f"Input Message: '{sc['message']}'")
         print(f"Detected Intent: {data['intent']} (Confidence: {data['confidence'] * 100:.0f}%)")
         print(f"Authorization: {data['is_authorized']}")
+        print(f"Thread ID: {data.get('thread_id')}")
+        if data.get("sources"):
+            print(f"Knowledge Sources Cited: {data.get('sources')}")
         print(f"Agent Final Response:\n{data['response']}")
         print("Execution Trace:")
         for step in data.get("execution_trace", []):
             print(f"  -> [{step['step_name']}] ({step['status']})")
         print("-" * 70 + "\n")
+
 
 
 if __name__ == "__main__":
