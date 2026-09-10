@@ -90,6 +90,16 @@ class Settings(BaseSettings):
         description="Embedding vector dimensions"
     )
 
+    # Supabase Relational Database (Phase 3)
+    SUPABASE_URL: str = Field(
+        default="",
+        description="Supabase project URL"
+    )
+    SUPABASE_KEY: str = Field(
+        default="",
+        description="Supabase Service Role or Anon API Key"
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:

@@ -25,3 +25,8 @@ docling>=2.114.0
 
 # Vector Database (Qdrant Cloud)
 qdrant-client>=1.16.0
+
+# Relational Database & Supabase (Phase 3)
+supabase>=2.13.0
+psycopg2-binary>=2.9.10
+sqlalchemy>=2.0.38
