@@ -12,7 +12,15 @@ def intent_router_node(state: AgentState) -> Dict[str, Any]:
     Evaluates Role-Based Access Control (RBAC) permissions for the classified intent.
     """
     intent = state.get("intent", IntentType.OUT_OF_SCOPE)
-    user_role = state.get("user_role", UserRole.CUSTOMER)
+    raw_role = state.get("user_role", UserRole.CUSTOMER)
+    if isinstance(raw_role, str):
+        try:
+            user_role = UserRole(raw_role)
+        except ValueError:
+            user_role = UserRole.CUSTOMER
+    else:
+        user_role = raw_role
+
     user_id = state.get("user_id", "unknown")
     trace = state.get("execution_trace", []) or []
 
