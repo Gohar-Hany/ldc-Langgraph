@@ -26,3 +26,12 @@ class AgentState(TypedDict):
     final_response: Optional[str]
     execution_trace: List[Dict[str, Any]]
     error: Optional[str]
+
+    # RAG & Context State (Phase 2)
+    thread_id: Optional[str]
+    retrieved_docs: Optional[List[Dict[str, Any]]]
+    relevant_docs: Optional[List[Dict[str, Any]]]
+    rag_sources: Optional[List[str]]
+    retry_count: Optional[int]
+    rewritten_query: Optional[str]
+

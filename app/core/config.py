@@ -54,13 +54,41 @@ class Settings(BaseSettings):
     # General LLM Parameters
     LLM_REQUEST_TIMEOUT: int = 15
 
-    # Security & JWT Configuration
+    # Security & Authentication (JWT)
     JWT_SECRET_KEY: str = Field(
         default="insecure_default_secret_key_for_development_only_12345",
         description="Secret key for signing JWT tokens"
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    # Qdrant Cloud Configuration
+    QDRANT_URL: str = Field(
+        default="",
+        description="Qdrant Cloud cluster endpoint"
+    )
+    QDRANT_API_KEY: str = Field(
+        default="",
+        description="Qdrant Cloud API Key"
+    )
+    QDRANT_COLLECTION_NAME: str = Field(
+        default="enterprise_knowledge",
+        description="Qdrant collection name for IT knowledge base"
+    )
+
+    # Cloud Embeddings Configuration
+    EMBEDDING_PROVIDER: str = Field(
+        default="openrouter",
+        description="Embeddings provider ('openrouter')"
+    )
+    EMBEDDING_MODEL: str = Field(
+        default="openai/text-embedding-3-small",
+        description="Cloud embedding model"
+    )
+    EMBEDDING_DIMENSION: int = Field(
+        default=1536,
+        description="Embedding vector dimensions"
+    )
 
 
 @lru_cache()

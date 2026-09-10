@@ -8,6 +8,7 @@ from app.schemas.intent_schema import IntentType
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000, description="The user message to process")
     conversation_id: Optional[str] = Field(default=None, description="Optional thread or conversation ID")
+    thread_id: Optional[str] = Field(default=None, description="LangGraph thread ID (synonym for conversation_id)")
 
 
 class ExecutionStep(BaseModel):
@@ -23,7 +24,13 @@ class ChatResponse(BaseModel):
     user_role: UserRole = Field(..., description="The role of the requesting user")
     is_authorized: bool = Field(..., description="Whether the user had permission for this intent")
     conversation_id: Optional[str] = Field(default=None)
+    thread_id: Optional[str] = Field(default=None, description="LangGraph thread identifier")
+    sources: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Knowledge base sources and section references"
+    )
     execution_trace: Optional[List[ExecutionStep]] = Field(
         default_factory=list,
         description="List of nodes executed in the graph"
     )
+
