@@ -20,3 +20,8 @@ bcrypt==5.0.0
 pytest==9.1.1
 httpx==0.28.1
 
+# Document Parsing & Ingestion (Phase 2)
+docling>=2.114.0
+
+# Vector Database (Qdrant Cloud)
+qdrant-client>=1.16.0
