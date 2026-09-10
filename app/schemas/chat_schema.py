@@ -33,4 +33,29 @@ class ChatResponse(BaseModel):
         default_factory=list,
         description="List of nodes executed in the graph"
     )
+    # Phase 4: External Search & Human-in-the-Loop fields
+    external_results: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="External search results from Tavily or vendor status"
+    )
+    approval_required: bool = Field(
+        default=False,
+        description="Whether this request is paused waiting for human supervisor approval"
+    )
+    approval_status: Optional[str] = Field(
+        default=None,
+        description="Status of approval: PENDING, APPROVED, or REJECTED"
+    )
+    approval_details: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Metadata details of the pending approval action"
+    )
+
+
+class ApprovalDecisionRequest(BaseModel):
+    approved: bool = Field(..., description="True to approve and execute, False to reject")
+    reviewer_notes: Optional[str] = Field(
+        default="",
+        description="Optional supervisor justification or notes"
+    )
 

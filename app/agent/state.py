@@ -35,3 +35,9 @@ class AgentState(TypedDict):
     retry_count: Optional[int]
     rewritten_query: Optional[str]
 
+    # External APIs & Human-in-the-Loop State (Phase 4)
+    external_search_results: Optional[List[Dict[str, Any]]]
+    approval_status: Optional[str]  # None, "PENDING", "APPROVED", "REJECTED"
+    approval_payload: Optional[Dict[str, Any]]
+    approver_id: Optional[str]
+
