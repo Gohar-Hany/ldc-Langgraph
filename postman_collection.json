@@ -48,8 +48,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           },
           "event": [
@@ -77,8 +81,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/",
-              "host": ["{{baseUrl}}"],
-              "path": [""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
             }
           }
         }
@@ -120,8 +128,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/token",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "token"
+              ]
             }
           }
         },
@@ -158,8 +173,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/token",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "token"
+              ]
             }
           }
         },
@@ -196,8 +218,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/token",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "token"
+              ]
             }
           }
         },
@@ -234,8 +263,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/token",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "token"
+              ]
             }
           }
         },
@@ -251,15 +287,333 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "02 - Customer Scenarios",
+      "name": "02 - Agentic RAG Pipeline (Qdrant & Persistence)",
+      "item": [
+        {
+          "name": "1. RAG - VPN Policy Query (Grounded Synthesis & Sources)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"How do I configure the corporate VPN on macOS and Windows 11?\",\n  \"thread_id\": \"postman_rag_session_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Intent classified as KNOWLEDGE_SEARCH', function () {",
+                  "    pm.expect(json.intent).to.eql('knowledge_search');",
+                  "});",
+                  "pm.test('Contains grounded response with sources citation', function () {",
+                  "    pm.expect(json.final_response).to.be.a('string');",
+                  "    pm.expect(json.final_response.length).to.be.above(50);",
+                  "    pm.expect(json.sources).to.be.an('array');",
+                  "    pm.expect(json.sources.length).to.be.above(0);",
+                  "});",
+                  "pm.test('Execution trace includes RAG pipeline steps', function () {",
+                  "    var stepNames = json.execution_trace.map(function(s) { return s.step_name; });",
+                  "    pm.expect(stepNames).to.include('rag_retrieve');",
+                  "    pm.expect(stepNames).to.include('rag_grade');",
+                  "    pm.expect(stepNames).to.include('rag_generate');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. RAG - Multi-Turn Follow-up (Conversation Memory via thread_id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What gateway and DNS IP should I enter for it?\",\n  \"thread_id\": \"postman_rag_session_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Response leverages conversation persistence', function () {",
+                  "    pm.expect(json.final_response).to.be.a('string');",
+                  "    pm.expect(json.final_response).to.match(/vpn|gateway|dns|10\\./i);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. RAG - Wi-Fi Network & 802.1X Policy (Qdrant Retrieval)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What is the policy and password requirements for Corp-Secure Wi-Fi network?\",\n  \"thread_id\": \"postman_wifi_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Correctly cites wifi_network_access.md', function () {",
+                  "    var sourceStr = JSON.stringify(json.sources);",
+                  "    pm.expect(sourceStr).to.include('wifi_network_access.md');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. RAG - Password Complexity & MFA Setup (NIST Standard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What are the corporate rules for password expiration and Authenticator MFA setup?\",\n  \"thread_id\": \"postman_mfa_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Cites password_mfa_policy.md', function () {",
+                  "    var sourceStr = JSON.stringify(json.sources);",
+                  "    pm.expect(sourceStr).to.include('password_mfa_policy.md');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. RAG - Hardware Refresh Cycles (Laptop Replacement)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"When is an employee eligible for a laptop hardware refresh cycle?\",\n  \"thread_id\": \"postman_hw_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Cites hardware_procurement.md', function () {",
+                  "    var sourceStr = JSON.stringify(json.sources);",
+                  "    pm.expect(sourceStr).to.include('hardware_procurement.md');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. RAG - Out-of-Scope Fallback Loop (Corrective RAG)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What is the corporate procedure for docking alien spacecraft in the parking lot?\",\n  \"thread_id\": \"postman_fallback_01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Triggers CRAG rewrite or fallback gracefully', function () {",
+                  "    var stepNames = json.execution_trace.map(function(s) { return s.step_name; });",
+                  "    var hasFallbackOrRewrite = stepNames.includes('rag_fallback') || stepNames.includes('rag_rewrite') || stepNames.includes('handle_fallback');",
+                  "    pm.expect(hasFallbackOrRewrite).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Customer Scenarios (RBAC & My Tickets)",
       "item": [
         {
           "name": "1. Customer - Greeting (Authorized)",
@@ -281,8 +635,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -306,8 +666,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -331,8 +697,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -356,8 +728,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -381,8 +759,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -406,15 +790,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "03 - Support Agent Scenarios",
+      "name": "04 - Support Agent Scenarios",
       "item": [
         {
           "name": "1. Support Agent - Create Ticket (Authorized)",
@@ -436,8 +826,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -461,8 +857,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -486,15 +888,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "04 - Senior Agent Scenarios",
+      "name": "05 - Senior Agent Scenarios",
       "item": [
         {
           "name": "1. Senior Agent - Password Reset (Authorized)",
@@ -516,8 +924,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -541,8 +955,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -566,15 +986,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "05 - Admin Scenarios (Unrestricted Access)",
+      "name": "06 - Admin Scenarios (Unrestricted Access)",
       "item": [
         {
           "name": "1. Admin - SQL Query & Schema Inspection (Authorized)",
@@ -596,8 +1022,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -621,15 +1053,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         }
       ]
     },
     {
-      "name": "06 - Edge Cases & Fallbacks",
+      "name": "07 - Edge Cases & Fallbacks",
       "item": [
         {
           "name": "1. Out of Scope Query (General Fallback)",
@@ -651,8 +1089,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
         },
@@ -672,10 +1116,293 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat"
+              ]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "08 - Ticket Management REST API (Phase 3)",
+      "item": [
+        {
+          "name": "1. Create Ticket (Customer/Agent) - 201 Created",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{active_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Dual monitor display failure on dock\",\n  \"description\": \"HDMI secondary monitor stays black after sleep mode on Dell WD19 dock.\",\n  \"priority\": \"high\",\n  \"category\": \"hardware\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Ticket has valid ID and title', function () {",
+                  "    pm.expect(json.id).to.be.a('number');",
+                  "    pm.expect(json.title).to.include('Dual monitor');",
+                  "    pm.collectionVariables.set('created_ticket_id', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get My Tickets (Customer Data Isolation) - 200 OK",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets",
+                "my"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is a list of user tickets', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. List All Tickets (Support Agent) - 200 OK",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{support_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets?status=open&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK for Agent', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns ticket queue', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. List All Tickets (Customer - 403 Forbidden Expected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403 Forbidden for Customer', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Update Ticket Status (Support Agent) - 200 OK",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{support_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"assigned_to\": \"agent_01\",\n  \"resolution_notes\": \"Diagnostic steps initiated for display adapter.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Ticket status is updated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('in_progress');",
+                  "    pm.expect(json.assigned_to).to.eql('agent_01');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Update Ticket Status (Customer - 403 Forbidden Expected)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"closed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tickets/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tickets",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403 Forbidden for Customer', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     }

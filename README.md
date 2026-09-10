@@ -10,12 +10,12 @@ This system implements an internal Enterprise IT Support Agent designed to proce
 
 ### Supported Roles & RBAC Matrix
 
-| Role | Hierarchy Level | Permitted Operations | Restricted Operations |
-| :--- | :--- | :--- | :--- |
-| **Customer** | Level 1 | Knowledge Search (`knowledge_search`), View Own Tickets (`my_tickets_search`), Greetings (`greeting`) | Ticket Modification, API Search, Sensitive Actions, Database Operations |
-| **Support Agent** | Level 2 | Customer permissions + Create/Update Tickets (`ticket_create_update`) + External API Status (`external_api_search`) | Sensitive System Operations, Database Operations |
-| **Senior Agent** | Level 3 | Support Agent permissions + High-Privilege Sensitive Operations (`sensitive_operation`) | Direct Database Queries/Schema Alterations |
-| **Admin** | Level 4 | Unrestricted Access across all 8 intents + Direct Database Queries & Operations (`database_query_operation`) | None |
+| Role                    | Hierarchy Level | Permitted Operations                                                                                                    | Restricted Operations                                                   |
+| :---------------------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| **Customer**      | Level 1         | Knowledge Search (`knowledge_search`), View Own Tickets (`my_tickets_search`), Greetings (`greeting`)             | Ticket Modification, API Search, Sensitive Actions, Database Operations |
+| **Support Agent** | Level 2         | Customer permissions + Create/Update Tickets (`ticket_create_update`) + External API Status (`external_api_search`) | Sensitive System Operations, Database Operations                        |
+| **Senior Agent**  | Level 3         | Support Agent permissions + High-Privilege Sensitive Operations (`sensitive_operation`)                               | Direct Database Queries/Schema Alterations                              |
+| **Admin**         | Level 4         | Unrestricted Access across all 8 intents + Direct Database Queries & Operations (`database_query_operation`)          | None                                                                    |
 
 ---
 
@@ -81,16 +81,26 @@ ldc-Langgraph/
 │
 ├── app/
 │   ├── agent/                 # LangGraph workflow components
-│   │   ├── edges/             # Conditional routing rules (route_after_rbac_check)
-│   │   ├── nodes/             # Receive, Classify, Router, and Specialized Response nodes
-│   │   ├── prompts/           # Enterprise classifier system prompts
-│   │   ├── graph.py           # Compiled StateGraph workflow instance
+│   │   ├── edges/             # Conditional routing rules (RBAC & CRAG loops)
+│   │   │   ├── routing_rules.py
+│   │   │   └── rag_edges.py
+│   │   ├── nodes/             # Receive, Classify, Router, RAG, and Response nodes
+│   │   │   ├── receive_node.py
+│   │   │   ├── classify_node.py
+│   │   │   ├── router_node.py
+│   │   │   ├── rag_nodes.py   # Corrective RAG (retrieve, grade, generate, rewrite)
+│   │   │   └── response_nodes.py
+│   │   ├── prompts/           # Prompts for classifier and grounded RAG synthesis
+│   │   ├── graph.py           # Compiled StateGraph workflow with MemorySaver checkpointer
 │   │   └── state.py           # AgentState TypedDict definition
 │   │
 │   ├── api/                   # FastAPI REST API layer
 │   │   ├── middlewares/       # Request logging and unified error handlers
 │   │   ├── v1/
-│   │   │   ├── endpoints/     # Auth and Chat route handlers
+│   │   │   ├── endpoints/     # Auth, Chat, and Ticket route handlers
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── chat.py
+│   │   │   │   └── tickets.py # Phase 3 Ticket CRUD REST API
 │   │   │   └── router.py      # v1 router aggregator
 │   │   └── dependencies.py    # JWT Bearer extraction and RBAC guards
 │   │
@@ -99,21 +109,40 @@ ldc-Langgraph/
 │   │   ├── logging.py         # Structured logging configuration
 │   │   └── security.py        # Bcrypt hashing and PyJWT token utilities
 │   │
-│   ├── schemas/               # Pydantic contracts and data models
+│   ├── schemas/               # Pydantic contracts and domain data models
 │   │   ├── auth_schema.py     # UserRole enum, UserProfile, and Token models
 │   │   ├── chat_schema.py     # ChatRequest, ChatResponse, ExecutionStep
-│   │   └── intent_schema.py   # IntentType enum and IntentClassificationOutput
+│   │   ├── intent_schema.py   # IntentType enum and IntentClassificationOutput
+│   │   ├── rag_schema.py      # KnowledgeChunk, ChunkMetadata, RAGGradeOutput
+│   │   └── ticket_schema.py   # TicketCreate, TicketUpdate, TicketResponse
 │   │
-│   ├── services/              # External services
-│   │   └── llm_service.py     # LLM integration (Aurai Studio & OpenRouter)
+│   ├── services/              # External cloud services
+│   │   ├── llm_service.py     # OpenRouter & Aurai Studio integration
+│   │   ├── openrouter_embedding.py # Cloud embeddings (text-embedding-3-small)
+│   │   ├── qdrant_cloud_service.py # Qdrant Cloud vector search
+│   │   ├── docling_ingestion.py    # IBM Docling layout parsing & HybridChunker
+│   │   └── database_service.py     # Supabase PostgreSQL relational client
 │   │
 │   └── main.py                # FastAPI Application Factory
 │
-├── tests/                     # Automated Test Suite (30 tests)
+├── data/                      # Knowledge Base & Database Migrations
+│   ├── knowledge_base/        # IT policy documents (VPN, Wi-Fi, MFA, Hardware, Software)
+│   └── migrations/            # Supabase SQL schemas (001_phase3_initial_schema.sql)
+│
+├── tests/                     # Automated Test Suite (48 tests passing)
 │   ├── conftest.py            # Pytest fixtures and test tokens for all 4 roles
-│   ├── integration/           # Integration tests for FastAPI endpoints
-│   ├── unit/                  # Unit tests for intent classifier, RBAC, and auth
-│   ├── live_demo.py           # End-to-end 6-scenario execution script
+│   ├── integration/           # Integration tests for Chat, RAG, and Tickets APIs
+│   │   ├── test_api_chat.py
+│   │   ├── test_rag_chat.py
+│   │   └── test_tickets_api.py
+│   ├── unit/                  # Unit tests for Classifier, RBAC, Ingestion, and Tickets
+│   │   ├── test_auth.py
+│   │   ├── test_intent_classifier.py
+│   │   ├── test_rbac_router.py
+│   │   ├── test_qdrant_service.py
+│   │   ├── test_docling_ingestion.py
+│   │   └── test_ticket_service.py
+│   ├── live_demo.py           # End-to-end multi-turn demo script
 │   └── runner.py              # Standalone test runner
 │
 ├── docs/                      # Architecture documentation & guides
@@ -124,29 +153,34 @@ ldc-Langgraph/
 └── README.md                  # Project documentation
 ```
 
+
 ---
 
 ## 5. Prerequisites & Installation
 
 ### Prerequisites
+
 * Python 3.10+
 * Git
 
 ### Step 1: Create and Activate Virtual Environment
 
 #### On Linux / WSL (Recommended):
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 #### On Windows (PowerShell):
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 ### Step 2: Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -162,6 +196,7 @@ cp .env.example .env
 ```
 
 ### Supported Providers:
+
 You can switch between **Aurai Studio** and **OpenRouter** in `.env`:
 
 ```env
@@ -213,16 +248,19 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ## 8. Automated Testing
 
 ### Run Complete Pytest Suite (30 Tests)
+
 ```bash
 pytest -v
 ```
 
 ### Run Standalone Test Runner
+
 ```bash
 python tests/runner.py
 ```
 
 ### Run Live 6-Scenario Demonstration
+
 ```bash
 python tests/live_demo.py
 ```
@@ -234,6 +272,7 @@ python tests/live_demo.py
 A complete Postman Collection is provided in [`postman_collection.json`](postman_collection.json).
 
 ### How to Import & Use:
+
 1. Open **Postman**.
 2. Click **Import** (top left).
 3. Select or drag [`postman_collection.json`](postman_collection.json).
@@ -280,25 +319,32 @@ postman_collection.json
 ```
 
 ### Automatic Token Handling:
+
 When you execute any request in `01 - Authentication`, Postman's test script automatically captures the returned JWT token and updates the collection variables (`active_token`, `customer_token`, etc.), allowing immediate execution of subsequent chat requests without manual token copying.
 
 ---
 
 ## 10. Implementation Roadmap
 
-- [x] **Phase 1: LangGraph Foundation, Multi-Intent Classification & RBAC** (Completed)
+- [X] **Phase 1: LangGraph Foundation, Multi-Intent Classification & RBAC** (Completed)
   - 8 Supported Intents with Structured Output.
   - Role-Based Access Control matrix (Customer, Support Agent, Senior Agent, Admin).
   - JWT Authentication & FastAPI REST endpoints.
-  - Complete 30-test suite & Postman Collection.
-- [ ] **Phase 2: Knowledge Base & RAG Pipeline** (Next)
-  - Vector database integration (ChromaDB / Qdrant).
-  - Document chunking, embeddings, and semantic similarity search.
-- [ ] **Phase 3: Relational Database & Ticket Tool Integrations**
-  - SQLite / PostgreSQL connection with SQL query generation.
-  - Ticket CRUD tools.
-- [ ] **Phase 4: External API Integrations**
+  - Complete test suite & Postman Collection.
+- [X] **Phase 2: Knowledge Base & Agentic RAG Pipeline (Qdrant Cloud & Docling)** (Completed)
+  - 100% Cloud Qdrant Vector database integration (`enterprise_knowledge`).
+  - Document parsing with IBM Docling HybridChunker (32 section-aware chunks).
+  - Cloud embeddings (`openai/text-embedding-3-small`) via OpenRouter.
+  - Corrective RAG (CRAG) flow with self-correction and grounded citations.
+  - Multi-turn conversation persistence (`MemorySaver`).
+- [X] **Phase 3: Relational Database & Ticket Tool Integrations (Supabase PostgreSQL)** (Completed)
+  - Managed Cloud PostgreSQL database integration via Supabase.
+  - Production Ticket Management system (`/api/v1/tickets`) with RBAC enforcement.
+  - Live database wiring for LangGraph agent nodes (`handle_my_tickets_search`, `handle_ticket_create_update`).
+  - Immutable audit trail logging (`audit_logs`).
+  - Comprehensive automated unit and integration test coverage (9 new tests).
+- [ ] **Phase 4: External API Integrations** (Next)
   - Real-time cloud status and external vendor monitoring tools.
-- [ ] **Phase 5: Human-in-the-Loop & Conversation Persistence**
-  - Checkpointing state persistence (SqliteSaver).
+- [ ] **Phase 5: Human-in-the-Loop & Advanced Controls**
+  - Advanced checkpointing state persistence (PostgresSaver / Redis).
   - Approval interrupts for sensitive operations.
