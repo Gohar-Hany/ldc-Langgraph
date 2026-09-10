@@ -1,0 +1,59 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([__start__]):::first
+	receive_message(receive_message)
+	classify_intent(classify_intent)
+	router_node(router_node)
+	handle_greeting(handle_greeting)
+	handle_my_tickets_search(handle_my_tickets_search)
+	handle_ticket_create_update(handle_ticket_create_update)
+	handle_external_api_search(handle_external_api_search)
+	handle_sensitive_operation(handle_sensitive_operation)
+	handle_database_query(handle_database_query)
+	handle_unauthorized(handle_unauthorized)
+	handle_fallback(handle_fallback)
+	rag_retrieve(rag_retrieve)
+	rag_grade(rag_grade)
+	rag_generate(rag_generate)
+	rag_rewrite(rag_rewrite)
+	rag_fallback(rag_fallback)
+	__end__([__end__]):::last
+
+	__start__ --> receive_message;
+	receive_message --> classify_intent;
+	classify_intent --> router_node;
+
+	router_node -. handle_knowledge_search .-> rag_retrieve;
+	router_node -. handle_greeting .-> handle_greeting;
+	router_node -. handle_my_tickets_search .-> handle_my_tickets_search;
+	router_node -. handle_ticket_create_update .-> handle_ticket_create_update;
+	router_node -. handle_external_api_search .-> handle_external_api_search;
+	router_node -. handle_sensitive_operation .-> handle_sensitive_operation;
+	router_node -. handle_database_query .-> handle_database_query;
+	router_node -. handle_unauthorized .-> handle_unauthorized;
+	router_node -. handle_fallback .-> handle_fallback;
+
+	rag_retrieve --> rag_grade;
+	rag_grade -. generate .-> rag_generate;
+	rag_grade -. rewrite .-> rag_rewrite;
+	rag_grade -. fallback .-> rag_fallback;
+	rag_rewrite --> rag_retrieve;
+
+	handle_database_query --> __end__;
+	handle_external_api_search --> __end__;
+	handle_fallback --> __end__;
+	handle_greeting --> __end__;
+	handle_my_tickets_search --> __end__;
+	handle_sensitive_operation --> __end__;
+	handle_ticket_create_update --> __end__;
+	handle_unauthorized --> __end__;
+	rag_fallback --> __end__;
+	rag_generate --> __end__;
+
+	classDef default fill:#f2f0ff,stroke:#6366f1,stroke-width:1px,line-height:1.2
+	classDef first fill:#e0e7ff,stroke:#4338ca,stroke-width:2px
+	classDef last fill:#dcfce7,stroke:#15803d,stroke-width:2px
