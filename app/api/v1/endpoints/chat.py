@@ -1,4 +1,7 @@
+import json
+import asyncio
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest, ChatResponse, ExecutionStep, ApprovalDecisionRequest
 from app.schemas.auth_schema import UserProfile, UserRole
 from app.schemas.intent_schema import IntentType
@@ -97,6 +100,138 @@ async def send_chat_message(
         approval_status=final_state.get("approval_status"),
         approval_required=False,
         execution_trace=execution_steps
+    )
+
+
+@router.post(
+    "/stream",
+    summary="Stream message execution, agent thoughts, and response tokens via Server-Sent Events (SSE)"
+)
+async def stream_chat_message(
+    body: ChatRequest,
+    current_user: UserProfile = Depends(get_current_user)
+):
+    """
+    Phase 7: Real-Time Token & Agent Reasoning Streaming (Server-Sent Events - SSE):
+    Streams events as the LangGraph state machine executes:
+      - 'step': Node execution progress (receive, classify, route, retrieve, grade, generate)
+      - 'thought': Real-time agent status / reasoning explanation
+      - 'token': Incremental tokens / word chunks for smooth typing UX
+      - 'interrupt': HITL sensitive operation approval required
+      - 'done': Final execution summary, sources, and metadata
+    """
+    logger.info(f"[API: /chat/stream] User '{current_user.id}' ({current_user.role.value}) requested stream: '{body.message}'")
+    thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
+
+    initial_state = {
+        "user_id": current_user.id,
+        "user_role": current_user.role,
+        "raw_message": body.message,
+        "conversation_id": thread_id,
+        "thread_id": thread_id,
+        "execution_trace": []
+    }
+    config = {"configurable": {"thread_id": thread_id}}
+
+    async def event_generator():
+        try:
+            # 1. Initial connect handshake event
+            yield f"event: step\ndata: {json.dumps({'step': 'start', 'status': 'connected', 'thread_id': thread_id})}\n\n"
+
+            final_state = {}
+            stream_iterator = enterprise_agent_graph.stream(initial_state, config=config, stream_mode="updates")
+
+            for event in stream_iterator:
+                for node_name, node_output in event.items():
+                    # Handle LangGraph HITL interrupt
+                    if node_name == "__interrupt__":
+                        interrupt_val = node_output[0].value if hasattr(node_output[0], "value") else node_output[0]
+                        interrupt_payload = {
+                            "approval_required": True,
+                            "thread_id": thread_id,
+                            "status": "PENDING_SUPERVISOR_APPROVAL",
+                            "details": interrupt_val if isinstance(interrupt_val, dict) else {"details": str(interrupt_val)}
+                        }
+                        yield f"event: interrupt\ndata: {json.dumps(interrupt_payload)}\n\n"
+                        yield f"event: done\ndata: {json.dumps({'final_response': 'Approval required for sensitive operation.', 'approval_required': True, 'thread_id': thread_id, 'approval_status': 'PENDING'})}\n\n"
+                        return
+
+                    final_state.update(node_output)
+
+                    # Pedagogical agent thoughts mapping
+                    thought_map = {
+                        "receive_message": "Message received and validated.",
+                        "classify_intent": f"Classified intent as '{node_output.get('intent', 'unknown')}'.",
+                        "router_node": "Verifying role-based permissions (RBAC)...",
+                        "handle_greeting": "Synthesizing welcoming greeting...",
+                        "rag_retrieve": "Searching enterprise knowledge base...",
+                        "rag_grade": "Grading relevance of retrieved documents...",
+                        "rag_rewrite": "Refining search query for better document retrieval...",
+                        "rag_generate": "Formulating grounded answer with citations...",
+                        "rag_fallback": "Applying enterprise fallback response...",
+                        "handle_my_tickets_search": "Fetching user support tickets from database...",
+                        "handle_ticket_create_update": "Executing ticket creation in database...",
+                        "handle_external_api_search": "Querying external search and status API...",
+                        "handle_sensitive_operation": "Evaluating sensitive operation permissions...",
+                        "handle_database_query": "Executing diagnostic database query...",
+                        "handle_unauthorized": "Access denied: User lacks required role permissions.",
+                        "handle_fallback": "Synthesizing fallback response."
+                    }
+                    thought_msg = thought_map.get(node_name, f"Completed node: {node_name}")
+
+                    def _clean_intent(val):
+                        if val is None:
+                            return None
+                        if hasattr(val, "value"):
+                            return val.value
+                        s = str(val)
+                        return s.split(".")[-1].lower() if "IntentType." in s else s
+
+                    step_payload = {
+                        "node": node_name,
+                        "status": "completed",
+                        "thought": thought_msg,
+                        "intent": _clean_intent(node_output.get("intent")),
+                        "is_authorized": node_output.get("is_authorized", True)
+                    }
+                    yield f"event: step\ndata: {json.dumps(step_payload)}\n\n"
+                    yield f"event: thought\ndata: {json.dumps({'thought': thought_msg})}\n\n"
+
+                    # Stream tokens if final_response was generated in this node
+                    if "final_response" in node_output and node_output["final_response"]:
+                        response_text = node_output["final_response"]
+                        words = response_text.split(" ")
+                        for i, word in enumerate(words):
+                            token_chunk = word + (" " if i < len(words) - 1 else "")
+                            yield f"event: token\ndata: {json.dumps({'token': token_chunk})}\n\n"
+                            await asyncio.sleep(0.01)
+
+            # Emit final done event with full context
+            done_payload = {
+                "final_response": final_state.get("final_response", ""),
+                "intent": _clean_intent(final_state.get("intent", "out_of_scope")),
+                "is_authorized": final_state.get("is_authorized", True),
+                "thread_id": thread_id,
+                "sources": final_state.get("rag_sources", []) or [],
+                "external_results": final_state.get("external_search_results"),
+                "approval_required": False,
+                "approval_status": final_state.get("approval_status")
+            }
+            yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+
+        except Exception as exc:
+            logger.error(f"[API: /chat/stream] Streaming error: {exc}")
+            yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Content-Type": "text/event-stream"
+        }
     )
 
 
