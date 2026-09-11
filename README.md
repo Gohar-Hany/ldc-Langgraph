@@ -370,6 +370,12 @@ When you execute any request in `01 - Authentication`, Postman's test script aut
   - Word-by-word streaming typing effect delivering TTFT (Time-To-First-Token) < 500ms.
   - Postman Collection updated with Folder `11 - Real-Time Streaming (Phase 7)`.
   - Full integration test suite (`test_phase7_streaming.py`) with 100% pass rate.
+- [X] **Phase 8: Enterprise AI Security & Compliance: PII Masking & Prompt Injection Defense** (Completed)
+  - Pre-execution Ingress Guardrails service (`GuardrailsService`) integrated into `receive_node`.
+  - Sensitive PII Sanitization: Luhn-validated credit cards, emails, phone numbers, passwords, and API tokens.
+  - Bilingual Prompt Injection Defense: Intercepts jailbreaks and system override attacks in English and Arabic.
+  - Fast-path short-circuiting preventing LLM execution on malicious input with HTTP 403 Security Policy Violation.
+  - 100% automated test coverage across unit and integration test suites (`test_guardrails_service.py` and `test_phase8_security_guardrails.py`).
 
 ---
 

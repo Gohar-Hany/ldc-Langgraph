@@ -12,10 +12,28 @@ from app.schemas.intent_schema import IntentClassificationOutput, IntentType
 def classify_intent_node(state: AgentState) -> Dict[str, Any]:
     """
     Executes structured intent classification using OpenRouter ChatOpenAI or fallback rules.
+    Operates strictly on sanitized_message to prevent PII leakage to cloud models.
     """
-    message = state.get("raw_message", "")
     trace = state.get("execution_trace", []) or []
-    
+
+    # Short-circuit if prompt injection was flagged at ingress
+    if state.get("security_flag") == "PROMPT_INJECTION_DETECTED":
+        logger.warning("[ClassifyNode] Bypassing LLM classification due to prompt injection flag.")
+        trace.append({
+            "step_name": "intent_classification",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "security_blocked",
+            "details": {"reason": "Prompt injection detected at ingress"}
+        })
+        return {
+            "intent": IntentType.OUT_OF_SCOPE,
+            "confidence": 1.0,
+            "reasoning": "Security Policy Violation: Prompt injection blocked.",
+            "extracted_entities": [],
+            "execution_trace": trace
+        }
+
+    message = state.get("sanitized_message") or state.get("raw_message", "")
     structured_classifier = llm_service.get_structured_classifier()
     classification_result: IntentClassificationOutput
     

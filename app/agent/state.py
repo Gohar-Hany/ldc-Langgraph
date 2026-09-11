@@ -21,6 +21,9 @@ class AgentState(TypedDict):
     # Authorization & Guardrail State
     is_authorized: bool
     authorization_error: Optional[str]
+    sanitized_message: Optional[str]
+    pii_redacted: Optional[Dict[str, int]]
+    security_flag: Optional[str]
 
     # Response & Execution Tracking
     final_response: Optional[str]

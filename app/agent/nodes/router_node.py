@@ -25,18 +25,24 @@ def intent_router_node(state: AgentState) -> Dict[str, Any]:
     trace = state.get("execution_trace", []) or []
 
     allowed_roles = INTENT_REQUIRED_ROLES.get(intent, [UserRole.ADMIN])
-    is_authorized = user_role in allowed_roles
 
-    auth_error = None
-    if not is_authorized:
-        allowed_roles_str = ", ".join([r.value for r in allowed_roles])
-        auth_error = (
-            f"Access Denied: Action '{intent.value}' requires one of the following roles: "
-            f"[{allowed_roles_str}], but current role is '{user_role.value}'."
-        )
-        logger.warning(f"[RouterNode] Authorization failure for user '{user_id}': {auth_error}")
+    # Check for security flag from ingress guardrails
+    if state.get("security_flag") == "PROMPT_INJECTION_DETECTED":
+        is_authorized = False
+        auth_error = state.get("authorization_error", "Security Policy Violation: Prompt injection blocked.")
+        logger.warning(f"[RouterNode] Security violation preserved for user '{user_id}': {auth_error}")
     else:
-        logger.info(f"[RouterNode] Authorization granted for user '{user_id}' ({user_role.value}) on intent '{intent.value}'")
+        is_authorized = user_role in allowed_roles
+        auth_error = None
+        if not is_authorized:
+            allowed_roles_str = ", ".join([r.value for r in allowed_roles])
+            auth_error = (
+                f"Access Denied: Action '{intent.value}' requires one of the following roles: "
+                f"[{allowed_roles_str}], but current role is '{user_role.value}'."
+            )
+            logger.warning(f"[RouterNode] Authorization failure for user '{user_id}': {auth_error}")
+        else:
+            logger.info(f"[RouterNode] Authorization granted for user '{user_id}' ({user_role.value}) on intent '{intent.value}'")
 
     trace.append({
         "step_name": "intent_routing_and_rbac",
