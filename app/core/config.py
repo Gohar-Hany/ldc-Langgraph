@@ -118,6 +118,20 @@ class Settings(BaseSettings):
         description="Maximum search results returned by Tavily"
     )
 
+    # Phase 5: Productionization & Reliability
+    RATE_LIMIT_ENABLED: bool = Field(
+        default=True,
+        description="Enable API rate limiting middleware"
+    )
+    RATE_LIMIT_PER_MINUTE: int = Field(
+        default=60,
+        description="Maximum requests per minute per client IP"
+    )
+    METRICS_ENABLED: bool = Field(
+        default=True,
+        description="Enable telemetry and metrics collection"
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:
