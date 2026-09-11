@@ -16,19 +16,35 @@ def test_empty_query_returns_error(search_service):
     assert "cannot be empty" in res["error"]
 
 
-def test_resilient_fallback_aws(search_service):
-    res = search_service.search("Is AWS us-east-1 down right now?")
+def test_resilient_fallback_aws():
+    service = ExternalSearchService()
+    service.client = None  # Force fallback path
+    res = service.search("Is AWS us-east-1 down right now?")
     assert res["success"] is True
     assert res["is_fallback"] is True
     assert len(res["results"]) > 0
     assert any("aws" in r["title"].lower() for r in res["results"])
 
 
-def test_resilient_fallback_github(search_service):
-    res = search_service.search("Check GitHub Actions and Webhooks status")
+def test_resilient_fallback_github():
+    service = ExternalSearchService()
+    service.client = None  # Force fallback path
+    res = service.search("Check GitHub Actions and Webhooks status")
     assert res["success"] is True
     assert res["is_fallback"] is True
     assert any("github" in r["title"].lower() for r in res["results"])
+
+
+def test_live_or_mock_tavily_search():
+    service = ExternalSearchService()
+    res = service.search("Status of AWS cloud services")
+    assert res["success"] is True
+    assert len(res["results"]) > 0
+    if service.client:
+        assert res["provider"] == "tavily"
+        assert res["is_fallback"] is False
+    else:
+        assert res["is_fallback"] is True
 
 
 def test_tavily_client_mock_success():
