@@ -28,3 +28,6 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 .langgraph/
+
+# Custom AI Skills & Knowledge Hub
+skills/

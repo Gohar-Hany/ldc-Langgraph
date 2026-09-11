@@ -50,11 +50,16 @@ def init_checkpointer():
                 settings.DATABASE_URL,
                 open=True,
                 max_size=10,
+                timeout=5.0,
                 kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row}
             )
+            # Enterprise Health Ping: Verify connectivity with non-DDL SELECT 1
+            # Guarantees connection works without executing any schema mutations at runtime.
+            with pool.connection(timeout=3.0) as conn:
+                conn.execute("SELECT 1;")
+
             saver = PostgresSaver(pool)
-            saver.setup()
-            logger.info("[Checkpointer] Successfully initialized and verified persistent PostgresSaver.")
+            logger.info("[Checkpointer] Successfully connected and verified persistent PostgresSaver.")
             return saver
         except Exception as e:
             logger.warning(f"[Checkpointer] Failed to initialize PostgresSaver ({e}). Falling back to MemorySaver.")

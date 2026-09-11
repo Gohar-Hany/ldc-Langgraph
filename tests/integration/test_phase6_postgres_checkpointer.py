@@ -54,10 +54,12 @@ def test_checkpointer_factory_resilient_fallback_on_invalid_db_url():
         settings.DATABASE_URL = original_url
 
 
-def test_checkpointer_mocked_postgres_saver_setup():
+def test_checkpointer_mocked_postgres_saver_no_runtime_ddl():
     """
-    Verifies that when Postgres is configured and accessible,
-    PostgresSaver is instantiated and .setup() is executed to run schema migrations.
+    Enterprise Principle of Least Privilege:
+    Verifies that when Postgres is configured and connected,
+    PostgresSaver is initialized WITHOUT executing DDL .setup() at runtime.
+    Schema migrations are decoupled and executed pre-deployment.
     """
     original_backend = settings.CHECKPOINTER_BACKEND
     original_url = settings.DATABASE_URL
@@ -72,7 +74,8 @@ def test_checkpointer_mocked_postgres_saver_setup():
              patch("langgraph.checkpoint.postgres.PostgresSaver", return_value=mock_saver):
             saver = init_checkpointer()
             assert saver == mock_saver
-            mock_saver.setup.assert_called_once()
+            # Assert DDL setup is decoupled from runtime
+            mock_saver.setup.assert_not_called()
     finally:
         settings.CHECKPOINTER_BACKEND = original_backend
         settings.DATABASE_URL = original_url
