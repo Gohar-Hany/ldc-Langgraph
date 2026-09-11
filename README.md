@@ -363,6 +363,13 @@ When you execute any request in `01 - Authentication`, Postman's test script aut
   - Persistent preservation of Human-in-the-Loop (`interrupt()`) execution states for supervisor decision resumption.
   - Resilient checkpointer factory with automated migration and graceful fallback to `MemorySaver`.
   - Complete integration test suite (`test_phase6_postgres_checkpointer.py`) with 100% pass rate.
+- [X] **Phase 7: Real-Time Token & Agent Reasoning Streaming (Server-Sent Events - SSE)** (Completed)
+  - Real-time streaming endpoint (`POST /api/v1/chat/stream`) with HTTP `text/event-stream`.
+  - Structured event protocol: `step`, `thought`, `token`, `interrupt`, and `done`.
+  - Live agent explainability broadcasting intermediate thoughts (retrieving, grading, rewriting).
+  - Word-by-word streaming typing effect delivering TTFT (Time-To-First-Token) < 500ms.
+  - Postman Collection updated with Folder `11 - Real-Time Streaming (Phase 7)`.
+  - Full integration test suite (`test_phase7_streaming.py`) with 100% pass rate.
 
 ---
 

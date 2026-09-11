@@ -1824,6 +1824,172 @@
           ]
         }
       ]
+    },
+    {
+      "name": "11 - Real-Time Streaming (Phase 7)",
+      "description": "Server-Sent Events (SSE) live streaming endpoints for real-time agent thoughts, step progression, and token generation.",
+      "item": [
+        {
+          "name": "1. Stream Chat - Greeting (SSE Live)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hello support team!\",\n  \"thread_id\": \"stream_demo_01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chat/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "stream"
+              ]
+            },
+            "description": "Streams greeting execution steps, thoughts, and response tokens via Server-Sent Events."
+          }
+        },
+        {
+          "name": "2. Stream Chat - Knowledge Search (RAG Pipeline)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"How do I configure VPN on my laptop?\",\n  \"thread_id\": \"stream_rag_01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chat/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "stream"
+              ]
+            },
+            "description": "Streams intermediate RAG thoughts (retrieving, grading, generating) and token-by-token citations."
+          }
+        },
+        {
+          "name": "3. Stream Chat - Sensitive Operation (HITL Interrupt Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Reset user password for john.doe\",\n  \"thread_id\": \"stream_hitl_01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chat/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "stream"
+              ]
+            },
+            "description": "Streams execution until LangGraph encounters an interrupt(), emitting an 'interrupt' event."
+          }
+        },
+        {
+          "name": "4. Stream Chat - Customer Forbidden Action (RBAC Event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Run SQL query SELECT * FROM users;\",\n  \"thread_id\": \"stream_rbac_01\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chat/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "stream"
+              ]
+            },
+            "description": "Streams RBAC enforcement and handle_unauthorized node with 403 explanation."
+          }
+        }
+      ]
     }
   ]
 }
