@@ -357,6 +357,12 @@ When you execute any request in `01 - Authentication`, Postman's test script aut
   - Sliding-window Rate Limiting middleware (`429 Too Many Requests`) for DoS protection.
   - Production containerization with multi-stage `Dockerfile` and `docker-compose.yml`.
   - Comprehensive End-to-End multi-role test suite (`test_phase5_e2e.py`) validating the complete lifecycle.
+- [X] **Phase 6: Distributed State Durability & Horizontal Scalability (PostgreSQL Checkpointer)** (Completed)
+  - Enterprise PostgreSQL persistent checkpointer via official `langgraph-checkpoint-postgres` and `psycopg-pool`.
+  - Seamless state durability across server crashes, restarts, and multi-pod Kubernetes horizontal scaling.
+  - Persistent preservation of Human-in-the-Loop (`interrupt()`) execution states for supervisor decision resumption.
+  - Resilient checkpointer factory with automated migration and graceful fallback to `MemorySaver`.
+  - Complete integration test suite (`test_phase6_postgres_checkpointer.py`) with 100% pass rate.
 
 ---
 
