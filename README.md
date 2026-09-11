@@ -350,8 +350,33 @@ When you execute any request in `01 - Authentication`, Postman's test script aut
   - Supervisor approval decision REST endpoints (`/api/v1/chat/approvals/{thread_id}/decide`).
   - Immutable audit logging in Supabase PostgreSQL for all sensitive approval actions.
   - Automated unit and integration test suite with 100% pass rate.
-- [ ] **Phase 5: Productionization, Reliability & Final Enterprise Agent** (Next)
-  - Advanced checkpointing state persistence (PostgresSaver / Redis).
-  - API metrics and telemetry endpoints (`/metrics`).
-  - Rate limiting middleware.
-  - Docker and docker-compose production packaging.
+- [X] **Phase 5: Productionization, Reliability, Observability & Final Enterprise Agent** (Completed)
+  - Thread-safe Metrics and Telemetry service (`/metrics`) supporting JSON and Prometheus exposition format.
+  - Request Tracing and Correlation ID middleware (`X-Request-ID` and `X-Process-Time-Ms`).
+  - Kubernetes-compatible health probes (`/health/live` liveness and `/health/ready` deep dependency audit).
+  - Sliding-window Rate Limiting middleware (`429 Too Many Requests`) for DoS protection.
+  - Production containerization with multi-stage `Dockerfile` and `docker-compose.yml`.
+  - Comprehensive End-to-End multi-role test suite (`test_phase5_e2e.py`) validating the complete lifecycle.
+
+---
+
+## 11. Production Docker Deployment
+
+Deploy the entire enterprise agent stack with Docker Compose:
+
+```bash
+# 1. Build and launch container in background
+docker compose up -d --build
+
+# 2. Inspect container status and healthchecks
+docker compose ps
+
+# 3. View live streaming application logs
+docker compose logs -f
+
+# 4. Verify readiness probe
+curl http://localhost:8000/health/ready
+
+# 5. Query system telemetry metrics
+curl http://localhost:8000/metrics?format=prometheus
+```

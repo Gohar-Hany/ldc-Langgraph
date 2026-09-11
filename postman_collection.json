@@ -1668,6 +1668,162 @@
           ]
         }
       ]
+    },
+    {
+      "name": "10 - Production Readiness & Observability (Phase 5)",
+      "item": [
+        {
+          "name": "1. Observability - Get Metrics (JSON Format)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics?format=json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Returns valid telemetry structure', function () {",
+                  "    pm.expect(json.telemetry).to.be.an('object');",
+                  "    pm.expect(json.telemetry.total_requests).to.be.above(0);",
+                  "    pm.expect(json.telemetry.average_latency_ms).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Observability - Prometheus Metrics Format",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics?format=prometheus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "prometheus"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Contains Prometheus HELP and TYPE annotations', function () {",
+                  "    var body = pm.response.text();",
+                  "    pm.expect(body).to.include('# HELP http_requests_total');",
+                  "    pm.expect(body).to.include('# TYPE http_requests_total counter');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Health - Liveness Probe (/health/live)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Liveness status is alive', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('alive');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Health - Readiness Probe (/health/ready)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('External cloud dependencies are checked', function () {",
+                  "    pm.expect(json.dependencies).to.be.an('object');",
+                  "    pm.expect(json.dependencies).to.have.property('supabase_postgresql');",
+                  "    pm.expect(json.dependencies).to.have.property('qdrant_vector_db');",
+                  "    pm.expect(json.dependencies).to.have.property('tavily_external_search');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
