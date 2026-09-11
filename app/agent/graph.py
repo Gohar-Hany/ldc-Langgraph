@@ -26,11 +26,56 @@ from app.agent.edges.routing_rules import route_after_rbac_check
 from app.agent.edges.rag_edges import decide_rag_flow
 
 
+from app.core.config import settings
+from app.core.logging import logger
+
+def init_checkpointer():
+    """
+    Initializes the enterprise LangGraph checkpointer.
+    If CHECKPOINTER_BACKEND is 'postgres' and DATABASE_URL is configured:
+        Connects via PostgreSQL ConnectionPool and sets up checkpoint tables.
+    Otherwise or on connection failure:
+        Falls back gracefully to in-memory MemorySaver with logging.
+    """
+    if settings.CHECKPOINTER_BACKEND == "postgres" and settings.DATABASE_URL:
+        try:
+            from psycopg_pool import ConnectionPool
+            from psycopg.rows import dict_row
+            from langgraph.checkpoint.postgres import PostgresSaver
+
+            redacted_url = settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else "configured host"
+            logger.info(f"[Checkpointer] Connecting to persistent PostgreSQL checkpointer at {redacted_url}")
+
+            pool = ConnectionPool(
+                settings.DATABASE_URL,
+                open=True,
+                max_size=10,
+                kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row}
+            )
+            saver = PostgresSaver(pool)
+            saver.setup()
+            logger.info("[Checkpointer] Successfully initialized and verified persistent PostgresSaver.")
+            return saver
+        except Exception as e:
+            logger.warning(f"[Checkpointer] Failed to initialize PostgresSaver ({e}). Falling back to MemorySaver.")
+            return MemorySaver()
+
+    return MemorySaver()
+
+
 # Shared checkpointer instance for state persistence across conversation threads
-checkpointer = MemorySaver()
+checkpointer = init_checkpointer()
 
 
-def build_enterprise_support_graph(use_checkpointer: bool = True):
+def set_checkpointer(new_checkpointer):
+    """Allows dynamic test injection or backend switching."""
+    global checkpointer, enterprise_agent_graph
+    checkpointer = new_checkpointer
+    enterprise_agent_graph = build_enterprise_support_graph(use_checkpointer=True, custom_checkpointer=new_checkpointer)
+    return enterprise_agent_graph
+
+
+def build_enterprise_support_graph(use_checkpointer: bool = True, custom_checkpointer=None):
     """
     Constructs and compiles the enterprise LangGraph workflow with Agentic RAG
     and persistent conversation state checkpointing.
@@ -108,7 +153,8 @@ def build_enterprise_support_graph(use_checkpointer: bool = True):
     builder.add_edge("handle_fallback", END)
 
     if use_checkpointer:
-        return builder.compile(checkpointer=checkpointer)
+        active_cp = custom_checkpointer if custom_checkpointer is not None else checkpointer
+        return builder.compile(checkpointer=active_cp)
     return builder.compile()
 
 

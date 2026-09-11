@@ -132,6 +132,16 @@ class Settings(BaseSettings):
         description="Enable telemetry and metrics collection"
     )
 
+    # Phase 6: Distributed State Durability & Checkpointing
+    DATABASE_URL: str = Field(
+        default="",
+        description="Direct PostgreSQL connection string for persistent checkpointer (e.g. Supabase pooler)"
+    )
+    CHECKPOINTER_BACKEND: Literal["postgres", "memory"] = Field(
+        default="postgres",
+        description="Checkpointer backend: 'postgres' for persistent DB storage or 'memory' for ephemeral testing"
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:
