@@ -2,19 +2,13 @@ from typing import Any, Dict
 from datetime import datetime, timezone
 
 from app.agent.state import AgentState
+from app.agent.utils import append_trace
 from app.core.logging import logger
 
 
-def _append_trace(trace: list, node_name: str, status: str = "success", details: Any = None) -> list:
-    trace_item = {
-        "step_name": node_name,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": status
-    }
-    if details:
-        trace_item["details"] = details
-    trace.append(trace_item)
-    return trace
+def _append_trace(trace, node_name, status="success", details=None):
+    """Local alias kept for backward compatibility within this module."""
+    return append_trace(trace, node_name, status, details)
 
 
 def handle_greeting_node(state: AgentState) -> Dict[str, Any]:
@@ -104,7 +98,8 @@ def handle_ticket_create_update_node(state: AgentState) -> Dict[str, Any]:
     user_id = state.get("user_id", "anonymous")
     user_role = state.get("user_role")
     role_str = user_role.value if hasattr(user_role, "value") else str(user_role)
-    raw_message = state.get("raw_message", "").strip()
+    # Use sanitized_message for ticket creation to prevent PII leakage (Fix C-07)
+    raw_message = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
 
     logger.info(f"[ResponseNode: Ticket Management] Processing ticket action for '{user_id}' (role: {role_str})")
 
@@ -170,11 +165,12 @@ def handle_ticket_create_update_node(state: AgentState) -> Dict[str, Any]:
 
 def handle_external_api_search_node(state: AgentState) -> Dict[str, Any]:
     trace = state.get("execution_trace", []) or []
-    raw_message = state.get("raw_message", "").strip()
-    logger.info(f"[ResponseNode: External API Search] Searching external services via Tavily for '{raw_message}'...")
+    # Use sanitized_message to prevent PII leakage to external Tavily API (Fix C-07)
+    query = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
+    logger.info(f"[ResponseNode: External API Search] Searching external services via Tavily...")
 
     from app.services.external_search_service import external_search_service
-    search_data = external_search_service.search(raw_message)
+    search_data = external_search_service.search(query)
 
     answer = search_data.get("answer", "No response from external search.")
     provider = search_data.get("provider", "external_api")
@@ -192,7 +188,6 @@ def handle_external_api_search_node(state: AgentState) -> Dict[str, Any]:
 
     response = (
         f"[External Vendor & API Telemetry - Provider: {provider.upper()}]\n"
-        f"Search Query: '{raw_message}'\n\n"
         f"Summary Status:\n{answer}\n\n"
         f"Reference Sources:\n{sources_summary}"
     )

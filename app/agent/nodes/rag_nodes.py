@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 from datetime import datetime, timezone
 
 from app.agent.state import AgentState
+from app.agent.utils import append_trace
 from app.core.logging import logger
 from app.services.openrouter_embedding import embedding_service
 from app.services.qdrant_cloud_service import qdrant_service
@@ -14,22 +15,21 @@ from app.agent.prompts.rag_prompts import (
 )
 
 
-def _append_trace(trace: list, node_name: str, status: str = "success") -> list:
-    trace = trace or []
-    trace.append({
-        "step_name": node_name,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": status
-    })
-    return trace
+def _append_trace(trace, node_name, status="success"):
+    """Local alias kept for backward compatibility within this module."""
+    return append_trace(trace, node_name, status)
 
 
 def rag_retrieve_node(state: AgentState) -> Dict[str, Any]:
     """Retrieve top matching chunks from Qdrant Cloud."""
     trace = state.get("execution_trace", []) or []
-    # Use rewritten query if available from a previous loop, otherwise original message
-    query = state.get("rewritten_query") or state.get("raw_message", "")
-    logger.info(f"[RAG: Retrieve] Searching Qdrant Cloud for query: '{query}'")
+    # Use rewritten query if available, then sanitized_message, then raw_message (Fix C-08)
+    query = (
+        state.get("rewritten_query")
+        or state.get("sanitized_message")
+        or state.get("raw_message", "")
+    )
+    logger.info(f"[RAG: Retrieve] Searching Qdrant Cloud for query (length: {len(query)})")
 
     try:
         query_vector = embedding_service.embed_query(query)
@@ -52,7 +52,8 @@ def rag_retrieve_node(state: AgentState) -> Dict[str, Any]:
 def rag_grade_node(state: AgentState) -> Dict[str, Any]:
     """Grade retrieved documents for relevance to the user inquiry using similarity threshold and LLM."""
     trace = state.get("execution_trace", []) or []
-    query = state.get("raw_message", "")
+    # Use sanitized_message to prevent PII being sent to the LLM grader (Fix C-09)
+    query = state.get("sanitized_message") or state.get("raw_message", "")
     retrieved_docs = state.get("retrieved_docs", []) or []
     
     logger.info(f"[RAG: Grade] Grading {len(retrieved_docs)} documents against query: '{query}'")
@@ -111,7 +112,8 @@ def rag_grade_node(state: AgentState) -> Dict[str, Any]:
 def rag_generate_node(state: AgentState) -> Dict[str, Any]:
     """Generate grounded, source-attributed answer using LLM."""
     trace = state.get("execution_trace", []) or []
-    query = state.get("raw_message", "")
+    # Use sanitized_message as base query so PII is never sent to the LLM generator (Fix C-08)
+    query = state.get("sanitized_message") or state.get("raw_message", "")
     relevant_docs = state.get("relevant_docs", []) or []
     sources = state.get("rag_sources", []) or []
 
@@ -199,7 +201,8 @@ def rag_generate_node(state: AgentState) -> Dict[str, Any]:
 def rag_rewrite_node(state: AgentState) -> Dict[str, Any]:
     """Rewrite query with technical terminology for second-chance retrieval loop."""
     trace = state.get("execution_trace", []) or []
-    query = state.get("raw_message", "")
+    # Use sanitized_message as base for query rewrite to avoid PII in prompt (Fix C-08)
+    query = state.get("sanitized_message") or state.get("raw_message", "")
     retry_count = state.get("retry_count", 0) or 0
 
     logger.info(f"[RAG: Rewrite] Reformulating query (Attempt {retry_count + 1}): '{query}'")

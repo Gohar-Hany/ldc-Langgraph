@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.config import settings
+from app.core.config import settings, validate_production_secrets
 from app.core.logging import logger
 from app.api.v1.router import api_router
 from app.api.middlewares.auth_middleware import RequestLoggingMiddleware
@@ -20,8 +20,19 @@ from app.api.middlewares.error_handler import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Enforce production security invariants before accepting any traffic
+    validate_production_secrets()
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION} [{settings.ENVIRONMENT}]")
     yield
+    # Gracefully close the PostgreSQL connection pool on shutdown (Fix H-03)
+    try:
+        from app.agent.graph import checkpointer
+        from langgraph.checkpoint.postgres import PostgresSaver
+        if isinstance(checkpointer, PostgresSaver) and hasattr(checkpointer, "_pool"):
+            checkpointer._pool.close()
+            logger.info("[Lifespan] PostgreSQL connection pool closed.")
+    except Exception as e:
+        logger.warning(f"[Lifespan] Could not close checkpointer pool: {e}")
     logger.info(f"Shutting down {settings.APP_NAME}")
 
 
@@ -36,13 +47,13 @@ def create_application() -> FastAPI:
         lifespan=lifespan
     )
 
-    # 1. CORS Configuration
+    # 1. CORS Configuration — Whitelist only; never allow_origins=["*"] with credentials
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.CORS_ALLOWED_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Bypass-Cache", "X-Bypass-Rate-Limit"],
     )
 
     # 2. Custom Middlewares

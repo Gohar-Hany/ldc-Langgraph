@@ -13,6 +13,16 @@ from app.core.logging import logger
 router = APIRouter(prefix="/chat", tags=["Agent Chat"])
 
 
+def _clean_intent(val):
+    """Normalise IntentType enum or string for JSON serialization."""
+    if val is None:
+        return None
+    if hasattr(val, "value"):
+        return val.value
+    s = str(val)
+    return s.split(".")[-1].lower() if "IntentType." in s else s
+
+
 @router.post("", response_model=ChatResponse, summary="Send a message to the Enterprise Support Agent")
 async def send_chat_message(
     body: ChatRequest,
@@ -21,12 +31,13 @@ async def send_chat_message(
 ):
     """
     Executes the LangGraph workflow:
-    1. Receive Message
-    2. Intent Classification (8 Intents)
-    3. Intent Router (RBAC check against user role)
-    4. Specialized Response generation / Agentic RAG / External API / HITL Interrupt
+    1. Receive Message (Guardrails + PII masking)
+    2. Semantic Cache Lookup
+    3. Intent Classification (8 Intents)
+    4. Intent Router (RBAC check against user role)
+    5. Specialized Response generation / Agentic RAG / External API / HITL Interrupt
     """
-    logger.info(f"[API: /chat] User '{current_user.id}' ({current_user.role.value}) sent: '{body.message}'")
+    logger.info(f"[API: /chat] User '{current_user.id}' ({current_user.role.value}) sent a message.")
 
     # Extract or generate persistent thread identifier
     thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
@@ -42,9 +53,9 @@ async def send_chat_message(
         "bypass_cache": bool(x_bypass_cache and x_bypass_cache.lower() == "true")
     }
 
-    # Execute graph with thread-level persistence configuration
+    # Execute graph non-blocking via thread pool to avoid starving the async event loop (Fix C-04)
     config = {"configurable": {"thread_id": thread_id}}
-    final_state = enterprise_agent_graph.invoke(initial_state, config=config)
+    final_state = await asyncio.to_thread(enterprise_agent_graph.invoke, initial_state, config)
 
     # Check if graph halted on a Human-in-the-Loop Interrupt
     interrupts = final_state.get("__interrupt__")
@@ -120,11 +131,11 @@ async def stream_chat_message(
     x_bypass_cache: Optional[str] = Header(default=None)
 ):
     """
-    Phase 7: Real-Time Token & Agent Reasoning Streaming (Server-Sent Events - SSE):
-    Streams graph node progression, pedagogical agent thoughts, and token chunks.
-    Phase 9: Seamlessly returns cached answers (< 25ms) with 'cached: true' when available.
+    Phase 7: Real-Time Token & Agent Reasoning Streaming (Server-Sent Events - SSE).
+    Uses astream() to avoid blocking the event loop (Fix C-05).
+    Phase 9: Seamlessly returns cached answers (<25ms) with 'cached: true' when available.
     """
-    logger.info(f"[API: /chat/stream] User '{current_user.id}' ({current_user.role.value}) requested stream: '{body.message}'")
+    logger.info(f"[API: /chat/stream] User '{current_user.id}' ({current_user.role.value}) requested stream.")
     thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
 
     initial_state = {
@@ -138,16 +149,38 @@ async def stream_chat_message(
     }
     config = {"configurable": {"thread_id": thread_id}}
 
+    # Pedagogical agent thought messages per node
+    THOUGHT_MAP = {
+        "receive_message": "Message received and validated.",
+        "semantic_cache_check": "Checking vector semantic cache for previous answers...",
+        "classify_intent": "Classifying intent...",
+        "router_node": "Verifying role-based permissions (RBAC)...",
+        "handle_greeting": "Synthesizing welcoming greeting...",
+        "rag_retrieve": "Searching enterprise knowledge base...",
+        "rag_grade": "Grading relevance of retrieved documents...",
+        "rag_rewrite": "Refining search query for better document retrieval...",
+        "rag_generate": "Formulating grounded answer with citations...",
+        "rag_fallback": "Applying enterprise fallback response...",
+        "handle_my_tickets_search": "Fetching user support tickets from database...",
+        "handle_ticket_create_update": "Executing ticket creation in database...",
+        "handle_external_api_search": "Querying external search and status API...",
+        "handle_sensitive_operation": "Evaluating sensitive operation permissions...",
+        "handle_database_query": "Executing diagnostic database query...",
+        "handle_unauthorized": "Access denied: User lacks required role permissions.",
+        "handle_fallback": "Synthesizing fallback response."
+    }
+
     async def event_generator():
         try:
             # 1. Initial connect handshake event
             yield f"event: step\ndata: {json.dumps({'step': 'start', 'status': 'connected', 'thread_id': thread_id})}\n\n"
 
             final_state = {}
-            stream_iterator = enterprise_agent_graph.stream(initial_state, config=config, stream_mode="updates")
 
-            for event in stream_iterator:
+            # Use astream() — non-blocking async iterator (Fix C-05)
+            async for event in enterprise_agent_graph.astream(initial_state, config=config, stream_mode="updates"):
                 for node_name, node_output in event.items():
+
                     # Handle LangGraph HITL interrupt
                     if node_name == "__interrupt__":
                         interrupt_val = node_output[0].value if hasattr(node_output[0], "value") else node_output[0]
@@ -163,35 +196,10 @@ async def stream_chat_message(
 
                     final_state.update(node_output)
 
-                    # Pedagogical agent thoughts mapping
-                    thought_map = {
-                        "receive_message": "Message received and validated.",
-                        "semantic_cache_check": "Checking vector semantic cache for previous answers...",
-                        "classify_intent": f"Classified intent as '{node_output.get('intent', 'unknown')}'.",
-                        "router_node": "Verifying role-based permissions (RBAC)...",
-                        "handle_greeting": "Synthesizing welcoming greeting...",
-                        "rag_retrieve": "Searching enterprise knowledge base...",
-                        "rag_grade": "Grading relevance of retrieved documents...",
-                        "rag_rewrite": "Refining search query for better document retrieval...",
-                        "rag_generate": "Formulating grounded answer with citations...",
-                        "rag_fallback": "Applying enterprise fallback response...",
-                        "handle_my_tickets_search": "Fetching user support tickets from database...",
-                        "handle_ticket_create_update": "Executing ticket creation in database...",
-                        "handle_external_api_search": "Querying external search and status API...",
-                        "handle_sensitive_operation": "Evaluating sensitive operation permissions...",
-                        "handle_database_query": "Executing diagnostic database query...",
-                        "handle_unauthorized": "Access denied: User lacks required role permissions.",
-                        "handle_fallback": "Synthesizing fallback response."
-                    }
-                    thought_msg = thought_map.get(node_name, f"Completed node: {node_name}")
-
-                    def _clean_intent(val):
-                        if val is None:
-                            return None
-                        if hasattr(val, "value"):
-                            return val.value
-                        s = str(val)
-                        return s.split(".")[-1].lower() if "IntentType." in s else s
+                    # Enrich classify_intent thought with detected intent
+                    thought_msg = THOUGHT_MAP.get(node_name, f"Completed node: {node_name}")
+                    if node_name == "classify_intent" and node_output.get("intent"):
+                        thought_msg = f"Classified intent as '{_clean_intent(node_output.get('intent'))}'."
 
                     step_payload = {
                         "node": node_name,
@@ -289,10 +297,11 @@ async def decide_sensitive_operation(
         "notes": decision_body.reviewer_notes
     }
 
-    # Resume the paused LangGraph workflow with supervisor's decision
-    resumed_state = enterprise_agent_graph.invoke(
+    # Resume the paused LangGraph workflow with supervisor's decision (non-blocking)
+    resumed_state = await asyncio.to_thread(
+        enterprise_agent_graph.invoke,
         Command(resume=decision_payload),
-        config=config
+        config
     )
 
     execution_steps = [
@@ -347,4 +356,3 @@ async def get_approval_status(
         "next_nodes": list(state_snapshot.next),
         "interrupts": interrupts
     }
-

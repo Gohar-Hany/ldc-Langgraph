@@ -1,6 +1,6 @@
 from functools import lru_cache
-from typing import Literal
-from pydantic import Field
+from typing import List, Literal
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,12 +55,19 @@ class Settings(BaseSettings):
     LLM_REQUEST_TIMEOUT: int = 15
 
     # Security & Authentication (JWT)
+    # REQUIRED in production — no default; app will fail fast if missing or too short.
     JWT_SECRET_KEY: str = Field(
-        default="insecure_default_secret_key_for_development_only_12345",
-        description="Secret key for signing JWT tokens"
+        default="",
+        description="REQUIRED: Minimum 32-char secret key for signing JWT tokens. Must be set via environment."
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    # CORS Configuration (Whitelist specific origins — never use "*" with credentials)
+    CORS_ALLOWED_ORIGINS: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080"],
+        description="Whitelisted CORS origins. Set via comma-separated env var CORS_ALLOWED_ORIGINS."
+    )
 
     # Qdrant Cloud Configuration
     QDRANT_URL: str = Field(
@@ -167,3 +174,21 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def validate_production_secrets() -> None:
+    """
+    Called at startup to enforce critical security invariants in production.
+    Raises SystemExit immediately if any required secret is missing or insecure.
+    """
+    if settings.ENVIRONMENT == "production":
+        if not settings.JWT_SECRET_KEY or len(settings.JWT_SECRET_KEY) < 32:
+            raise SystemExit(
+                "FATAL: JWT_SECRET_KEY must be at least 32 characters in production. "
+                "Set it via the JWT_SECRET_KEY environment variable."
+            )
+        if "*" in settings.CORS_ALLOWED_ORIGINS:
+            raise SystemExit(
+                "FATAL: CORS_ALLOWED_ORIGINS must not contain '*' in production. "
+                "Set explicit allowed origins via the CORS_ALLOWED_ORIGINS environment variable."
+            )
