@@ -125,6 +125,20 @@ def create_application() -> FastAPI:
         except Exception as e:
             dependencies["tavily_external_search"] = {"status": "degraded", "error": str(e)}
 
+        # 5. LangGraph State Checkpointer check (Fix M-06)
+        try:
+            from app.agent.graph import checkpointer
+            cp_ok = checkpointer is not None
+            pool_healthy = True
+            if hasattr(checkpointer, "_pool") and checkpointer._pool is not None:
+                pool_healthy = not getattr(checkpointer._pool, "closed", False)
+            dependencies["langgraph_checkpointer"] = {
+                "status": "ready" if (cp_ok and pool_healthy) else "degraded",
+                "type": type(checkpointer).__name__ if checkpointer else "none"
+            }
+        except Exception as e:
+            dependencies["langgraph_checkpointer"] = {"status": "degraded", "error": str(e)}
+
         all_ready = all(d.get("status") in ["ready", "fallback_mode"] for d in dependencies.values())
 
         return {

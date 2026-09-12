@@ -1,7 +1,8 @@
 import json
 import asyncio
+import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest, ChatResponse, ExecutionStep, ApprovalDecisionRequest
 from app.schemas.auth_schema import UserProfile, UserRole
@@ -26,6 +27,7 @@ def _clean_intent(val):
 @router.post("", response_model=ChatResponse, summary="Send a message to the Enterprise Support Agent")
 async def send_chat_message(
     body: ChatRequest,
+    request: Request,
     current_user: UserProfile = Depends(get_current_user),
     x_bypass_cache: Optional[str] = Header(default=None)
 ):
@@ -37,7 +39,8 @@ async def send_chat_message(
     4. Intent Router (RBAC check against user role)
     5. Specialized Response generation / Agentic RAG / External API / HITL Interrupt
     """
-    logger.info(f"[API: /chat] User '{current_user.id}' ({current_user.role.value}) sent a message.")
+    request_id = getattr(getattr(request, "state", None), "request_id", None) or f"req_{uuid.uuid4().hex[:12]}"
+    logger.info(f"[API: /chat] [{request_id}] User '{current_user.id}' ({current_user.role.value}) sent a message.")
 
     # Extract or generate persistent thread identifier
     thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
@@ -49,6 +52,7 @@ async def send_chat_message(
         "raw_message": body.message,
         "conversation_id": thread_id,
         "thread_id": thread_id,
+        "request_id": request_id,
         "execution_trace": [],
         "bypass_cache": bool(x_bypass_cache and x_bypass_cache.lower() == "true")
     }
@@ -127,6 +131,7 @@ async def send_chat_message(
 )
 async def stream_chat_message(
     body: ChatRequest,
+    request: Request,
     current_user: UserProfile = Depends(get_current_user),
     x_bypass_cache: Optional[str] = Header(default=None)
 ):
@@ -135,7 +140,8 @@ async def stream_chat_message(
     Uses astream() to avoid blocking the event loop (Fix C-05).
     Phase 9: Seamlessly returns cached answers (<25ms) with 'cached: true' when available.
     """
-    logger.info(f"[API: /chat/stream] User '{current_user.id}' ({current_user.role.value}) requested stream.")
+    request_id = getattr(getattr(request, "state", None), "request_id", None) or f"req_{uuid.uuid4().hex[:12]}"
+    logger.info(f"[API: /chat/stream] [{request_id}] User '{current_user.id}' ({current_user.role.value}) requested stream.")
     thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
 
     initial_state = {
@@ -144,6 +150,7 @@ async def stream_chat_message(
         "raw_message": body.message,
         "conversation_id": thread_id,
         "thread_id": thread_id,
+        "request_id": request_id,
         "execution_trace": [],
         "bypass_cache": bool(x_bypass_cache and x_bypass_cache.lower() == "true")
     }

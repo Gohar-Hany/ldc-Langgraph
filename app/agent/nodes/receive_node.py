@@ -17,7 +17,7 @@ def receive_message_node(state: AgentState) -> Dict[str, Any]:
     role = state.get("user_role", "customer")
     raw_message = state.get("raw_message", "").strip()
 
-    logger.info(f"[ReceiveNode] Received message from user '{user_id}' with role '{role}': '{raw_message[:60]}...'")
+    logger.info(f"[ReceiveNode] Processing incoming message from user '{user_id}' with role '{role}' (length: {len(raw_message)} chars)")
 
     # 1. Prompt Injection Defense
     is_injection, injection_reason = guardrails_service.detect_prompt_injection(raw_message)

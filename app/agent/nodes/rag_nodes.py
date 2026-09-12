@@ -15,11 +15,6 @@ from app.agent.prompts.rag_prompts import (
 )
 
 
-def _append_trace(trace, node_name, status="success"):
-    """Local alias kept for backward compatibility within this module."""
-    return append_trace(trace, node_name, status)
-
-
 def rag_retrieve_node(state: AgentState) -> Dict[str, Any]:
     """Retrieve top matching chunks from Qdrant Cloud."""
     trace = state.get("execution_trace", []) or []
@@ -38,14 +33,14 @@ def rag_retrieve_node(state: AgentState) -> Dict[str, Any]:
         
         return {
             "retrieved_docs": docs_data,
-            "execution_trace": _append_trace(trace, "rag_retrieve")
+            "execution_trace": append_trace(trace, "rag_retrieve")
         }
     except Exception as exc:
         logger.error(f"[RAG: Retrieve Error] Retrieval failed: {exc}")
         return {
             "retrieved_docs": [],
             "error": str(exc),
-            "execution_trace": _append_trace(trace, "rag_retrieve", status="failed")
+            "execution_trace": append_trace(trace, "rag_retrieve", status="failed")
         }
 
 
@@ -104,7 +99,7 @@ def rag_grade_node(state: AgentState) -> Dict[str, Any]:
     return {
         "relevant_docs": relevant_docs,
         "rag_sources": sources,
-        "execution_trace": _append_trace(trace, "rag_grade")
+        "execution_trace": append_trace(trace, "rag_grade")
     }
 
 
@@ -165,7 +160,7 @@ def rag_generate_node(state: AgentState) -> Dict[str, Any]:
 
         return {
             "final_response": final_answer,
-            "execution_trace": _append_trace(trace, "rag_generate")
+            "execution_trace": append_trace(trace, "rag_generate")
         }
     except Exception as exc:
         logger.error(f"[RAG: Generate Error] Failed to generate response: {exc}")
@@ -194,7 +189,7 @@ def rag_generate_node(state: AgentState) -> Dict[str, Any]:
 
         return {
             "final_response": fallback_answer,
-            "execution_trace": _append_trace(trace, "rag_generate", status="fallback")
+            "execution_trace": append_trace(trace, "rag_generate", status="fallback")
         }
 
 
@@ -223,14 +218,14 @@ def rag_rewrite_node(state: AgentState) -> Dict[str, Any]:
     return {
         "rewritten_query": rewritten,
         "retry_count": retry_count + 1,
-        "execution_trace": _append_trace(trace, "rag_rewrite")
+        "execution_trace": append_trace(trace, "rag_rewrite")
     }
 
 
 def rag_fallback_node(state: AgentState) -> Dict[str, Any]:
     """Graceful fallback when no documentation answers the user request."""
     trace = state.get("execution_trace", []) or []
-    query = state.get("raw_message", "")
+    query = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
     logger.info(f"[RAG: Fallback] No knowledge base match found for: '{query}'")
 
     response = (
@@ -241,5 +236,5 @@ def rag_fallback_node(state: AgentState) -> Dict[str, Any]:
     )
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "rag_fallback")
+        "execution_trace": append_trace(trace, "rag_fallback")
     }

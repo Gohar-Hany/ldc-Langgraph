@@ -1,26 +1,26 @@
 from pathlib import Path
+from unittest.mock import MagicMock
 import pytest
 from app.services.docling_ingestion import DoclingIngestionService
 
 
-@pytest.fixture
-def ingestion_service():
-    return DoclingIngestionService(kb_dir="data/knowledge_base")
+def test_infer_category():
+    """Unit test for category inference heuristics (isolated from heavy ML models)."""
+    service = object.__new__(DoclingIngestionService)
+    assert service._infer_category("vpn_access_policy.md") == "network"
+    assert service._infer_category("wifi_network_access.md") == "network"
+    assert service._infer_category("password_mfa_policy.md") == "security"
+    assert service._infer_category("hardware_procurement.md") == "hardware"
+    assert service._infer_category("software_license_guidelines.md") == "software"
+    assert service._infer_category("random_doc.md") == "general"
 
 
-def test_infer_category(ingestion_service):
-    assert ingestion_service._infer_category("vpn_access_policy.md") == "network"
-    assert ingestion_service._infer_category("wifi_network_access.md") == "network"
-    assert ingestion_service._infer_category("password_mfa_policy.md") == "security"
-    assert ingestion_service._infer_category("hardware_procurement.md") == "hardware"
-    assert ingestion_service._infer_category("software_license_guidelines.md") == "software"
-    assert ingestion_service._infer_category("random_doc.md") == "general"
-
-
-def test_docling_parse_single_file(ingestion_service):
+@pytest.mark.slow
+def test_docling_parse_single_file():
     file_path = Path("data/knowledge_base/vpn_access_policy.md")
     assert file_path.exists(), "VPN policy file must exist for ingestion test"
     
+    ingestion_service = DoclingIngestionService(kb_dir="data/knowledge_base")
     chunks = ingestion_service.parse_file(file_path)
     assert len(chunks) > 0
     
@@ -33,7 +33,9 @@ def test_docling_parse_single_file(ingestion_service):
     assert first_chunk.metadata.section_title is not None
 
 
-def test_docling_parse_directory(ingestion_service):
+@pytest.mark.slow
+def test_docling_parse_directory():
+    ingestion_service = DoclingIngestionService(kb_dir="data/knowledge_base")
     all_chunks = ingestion_service.parse_directory()
     assert len(all_chunks) >= 20, "Should have parsed multiple documents across knowledge base"
     
@@ -41,3 +43,4 @@ def test_docling_parse_directory(ingestion_service):
     assert "vpn_access_policy.md" in doc_names
     assert "wifi_network_access.md" in doc_names
     assert "password_mfa_policy.md" in doc_names
+

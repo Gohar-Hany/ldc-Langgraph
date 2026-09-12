@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 from typing import List
-from docling.document_converter import DocumentConverter
-from docling.chunking import HybridChunker
 
 from app.core.logging import logger
 from app.schemas.rag_schema import KnowledgeChunk, ChunkMetadata
@@ -15,8 +13,22 @@ class DoclingIngestionService:
 
     def __init__(self, kb_dir: str = "data/knowledge_base"):
         self.kb_dir = Path(kb_dir)
-        self.converter = DocumentConverter()
-        self.chunker = HybridChunker()
+        self._converter = None
+        self._chunker = None
+
+    @property
+    def converter(self):
+        if self._converter is None:
+            from docling.document_converter import DocumentConverter
+            self._converter = DocumentConverter()
+        return self._converter
+
+    @property
+    def chunker(self):
+        if self._chunker is None:
+            from docling.chunking import HybridChunker
+            self._chunker = HybridChunker()
+        return self._chunker
 
     def _infer_category(self, filename: str) -> str:
         name = filename.lower()

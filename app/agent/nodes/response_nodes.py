@@ -6,11 +6,6 @@ from app.agent.utils import append_trace
 from app.core.logging import logger
 
 
-def _append_trace(trace, node_name, status="success", details=None):
-    """Local alias kept for backward compatibility within this module."""
-    return append_trace(trace, node_name, status, details)
-
-
 def handle_greeting_node(state: AgentState) -> Dict[str, Any]:
     trace = state.get("execution_trace", []) or []
     logger.info("[ResponseNode: Greeting] Generating greeting response.")
@@ -23,39 +18,20 @@ def handle_greeting_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         from app.services.semantic_cache_service import semantic_cache_service
-        raw_role = state.get("user_role", "customer")
-        role_val = raw_role.value if hasattr(raw_role, "value") else str(raw_role)
-        query = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
+        cache_query = state.get("sanitized_message") or state.get("raw_message", "hello")
         semantic_cache_service.store(
-            query=query,
+            query=cache_query,
             response=response,
             intent="greeting",
-            user_role=role_val
+            user_role=str(state.get("user_role", "customer")),
+            sources=[]
         )
     except Exception as cache_err:
         logger.debug(f"[Greeting: Cache Store Note] {cache_err}")
 
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_greeting")
-    }
-
-
-def handle_knowledge_search_node(state: AgentState) -> Dict[str, Any]:
-    trace = state.get("execution_trace", []) or []
-    query = state.get("raw_message", "")
-    logger.info(f"[ResponseNode: Knowledge Search] Processing query: {query}")
-    
-    response = (
-        f"[Knowledge Base Search]\n"
-        f"Query: '{query}'\n"
-        f"Result: In Phase 1, knowledge retrieval flow is verified. "
-        f"Standard IT guidelines indicate VPN configuration requires the corporate certificate "
-        f"and MFA via Authenticator app."
-    )
-    return {
-        "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_knowledge_search")
+        "execution_trace": append_trace(trace, "handle_greeting")
     }
 
 
@@ -89,7 +65,7 @@ def handle_my_tickets_search_node(state: AgentState) -> Dict[str, Any]:
 
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_my_tickets_search")
+        "execution_trace": append_trace(trace, "handle_my_tickets_search")
     }
 
 
@@ -159,7 +135,7 @@ def handle_ticket_create_update_node(state: AgentState) -> Dict[str, Any]:
 
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_ticket_create_update")
+        "execution_trace": append_trace(trace, "handle_ticket_create_update")
     }
 
 
@@ -195,7 +171,7 @@ def handle_external_api_search_node(state: AgentState) -> Dict[str, Any]:
     return {
         "final_response": response,
         "external_search_results": results,
-        "execution_trace": _append_trace(
+        "execution_trace": append_trace(
             trace,
             "handle_external_api_search",
             details={"provider": provider, "results_count": len(results)}
@@ -208,7 +184,7 @@ def handle_sensitive_operation_node(state: AgentState) -> Dict[str, Any]:
     user_id = state.get("user_id", "anonymous")
     user_role = state.get("user_role")
     role_str = user_role.value if hasattr(user_role, "value") else str(user_role)
-    raw_message = state.get("raw_message", "")
+    raw_message = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
     thread_id = state.get("thread_id") or state.get("conversation_id") or "default_session"
 
     logger.info(f"[ResponseNode: Sensitive Operation] Initiating HITL approval for '{user_id}' ({role_str})...")
@@ -299,7 +275,7 @@ def handle_sensitive_operation_node(state: AgentState) -> Dict[str, Any]:
         "approval_status": status_str,
         "approver_id": reviewer_id,
         "approval_payload": approval_request,
-        "execution_trace": _append_trace(
+        "execution_trace": append_trace(
             trace,
             "handle_sensitive_operation",
             status=status_str.lower(),
@@ -313,7 +289,7 @@ def handle_database_query_node(state: AgentState) -> Dict[str, Any]:
     user_id = state.get("user_id", "anonymous")
     user_role = state.get("user_role")
     role_str = user_role.value if hasattr(user_role, "value") else str(user_role)
-    raw_message = state.get("raw_message", "")
+    raw_message = (state.get("sanitized_message") or state.get("raw_message", "")).strip()[:500]
 
     logger.info(f"[ResponseNode: Database Operation] Admin database operation verified for user '{user_id}'.")
 
@@ -338,7 +314,7 @@ def handle_database_query_node(state: AgentState) -> Dict[str, Any]:
 
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_database_query")
+        "execution_trace": append_trace(trace, "handle_database_query")
     }
 
 
@@ -351,7 +327,7 @@ def handle_unauthorized_node(state: AgentState) -> Dict[str, Any]:
     response = f"Access Restricted (403 Forbidden): {error_msg}"
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_unauthorized", status="forbidden")
+        "execution_trace": append_trace(trace, "handle_unauthorized", status="forbidden")
     }
 
 
@@ -366,5 +342,5 @@ def handle_fallback_node(state: AgentState) -> Dict[str, Any]:
     )
     return {
         "final_response": response,
-        "execution_trace": _append_trace(trace, "handle_fallback")
+        "execution_trace": append_trace(trace, "handle_fallback")
     }

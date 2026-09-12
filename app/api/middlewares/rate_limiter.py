@@ -45,6 +45,15 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         max_requests = settings.RATE_LIMIT_PER_MINUTE
 
         with self._lock:
+            # Bounded memory management: Evict expired IPs if dict exceeds threshold (Fix H-09)
+            if len(self._requests) > 2000:
+                expired_ips = [
+                    ip for ip, timestamps in self._requests.items()
+                    if not timestamps or now - timestamps[-1] >= window_seconds
+                ]
+                for ip in expired_ips:
+                    del self._requests[ip]
+
             # Clean timestamps older than window
             valid_timestamps = [ts for ts in self._requests[client_ip] if now - ts < window_seconds]
             

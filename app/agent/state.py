@@ -11,6 +11,7 @@ class AgentState(TypedDict):
     user_role: UserRole
     raw_message: str
     conversation_id: Optional[str]
+    request_id: Optional[str]
 
     # Intent Classification Results
     intent: Optional[IntentType]
