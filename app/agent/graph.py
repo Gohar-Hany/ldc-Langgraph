@@ -22,7 +22,8 @@ from app.agent.nodes.rag_nodes import (
     rag_rewrite_node,
     rag_fallback_node
 )
-from app.agent.edges.routing_rules import route_after_rbac_check
+from app.agent.nodes.cache_node import semantic_cache_check_node
+from app.agent.edges.routing_rules import route_after_rbac_check, route_after_cache_check
 from app.agent.edges.rag_edges import decide_rag_flow
 
 
@@ -89,6 +90,7 @@ def build_enterprise_support_graph(use_checkpointer: bool = True, custom_checkpo
 
     # 1. Core Workflow Nodes
     builder.add_node("receive_message", receive_message_node)
+    builder.add_node("semantic_cache_check", semantic_cache_check_node)
     builder.add_node("classify_intent", classify_intent_node)
     builder.add_node("router_node", intent_router_node)
 
@@ -109,9 +111,17 @@ def build_enterprise_support_graph(use_checkpointer: bool = True, custom_checkpo
     builder.add_node("rag_rewrite", rag_rewrite_node)
     builder.add_node("rag_fallback", rag_fallback_node)
 
-    # 4. Entry and Intent Classification Flow
+    # 4. Entry, Vector Semantic Caching, and Intent Classification Flow
     builder.add_edge(START, "receive_message")
-    builder.add_edge("receive_message", "classify_intent")
+    builder.add_edge("receive_message", "semantic_cache_check")
+    builder.add_conditional_edges(
+        "semantic_cache_check",
+        route_after_cache_check,
+        {
+            "cache_hit": END,
+            "cache_miss": "classify_intent"
+        }
+    )
     builder.add_edge("classify_intent", "router_node")
 
     # 5. RBAC Router Conditional Edges

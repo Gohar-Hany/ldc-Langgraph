@@ -1,6 +1,7 @@
 import json
 import asyncio
-from fastapi import APIRouter, Depends
+from typing import Optional
+from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest, ChatResponse, ExecutionStep, ApprovalDecisionRequest
 from app.schemas.auth_schema import UserProfile, UserRole
@@ -15,7 +16,8 @@ router = APIRouter(prefix="/chat", tags=["Agent Chat"])
 @router.post("", response_model=ChatResponse, summary="Send a message to the Enterprise Support Agent")
 async def send_chat_message(
     body: ChatRequest,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
+    x_bypass_cache: Optional[str] = Header(default=None)
 ):
     """
     Executes the LangGraph workflow:
@@ -36,7 +38,8 @@ async def send_chat_message(
         "raw_message": body.message,
         "conversation_id": thread_id,
         "thread_id": thread_id,
-        "execution_trace": []
+        "execution_trace": [],
+        "bypass_cache": bool(x_bypass_cache and x_bypass_cache.lower() == "true")
     }
 
     # Execute graph with thread-level persistence configuration
@@ -75,7 +78,9 @@ async def send_chat_message(
                     details=step.get("details")
                 )
                 for step in final_state.get("execution_trace", [])
-            ]
+            ],
+            cached=False,
+            cache_score=None
         )
 
     execution_steps = [
@@ -99,7 +104,9 @@ async def send_chat_message(
         external_results=final_state.get("external_search_results"),
         approval_status=final_state.get("approval_status"),
         approval_required=False,
-        execution_trace=execution_steps
+        execution_trace=execution_steps,
+        cached=bool(final_state.get("cached", False)),
+        cache_score=final_state.get("cache_score")
     )
 
 
@@ -109,16 +116,13 @@ async def send_chat_message(
 )
 async def stream_chat_message(
     body: ChatRequest,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
+    x_bypass_cache: Optional[str] = Header(default=None)
 ):
     """
     Phase 7: Real-Time Token & Agent Reasoning Streaming (Server-Sent Events - SSE):
-    Streams events as the LangGraph state machine executes:
-      - 'step': Node execution progress (receive, classify, route, retrieve, grade, generate)
-      - 'thought': Real-time agent status / reasoning explanation
-      - 'token': Incremental tokens / word chunks for smooth typing UX
-      - 'interrupt': HITL sensitive operation approval required
-      - 'done': Final execution summary, sources, and metadata
+    Streams graph node progression, pedagogical agent thoughts, and token chunks.
+    Phase 9: Seamlessly returns cached answers (< 25ms) with 'cached: true' when available.
     """
     logger.info(f"[API: /chat/stream] User '{current_user.id}' ({current_user.role.value}) requested stream: '{body.message}'")
     thread_id = body.thread_id or body.conversation_id or f"thread_{current_user.id}"
@@ -129,7 +133,8 @@ async def stream_chat_message(
         "raw_message": body.message,
         "conversation_id": thread_id,
         "thread_id": thread_id,
-        "execution_trace": []
+        "execution_trace": [],
+        "bypass_cache": bool(x_bypass_cache and x_bypass_cache.lower() == "true")
     }
     config = {"configurable": {"thread_id": thread_id}}
 
@@ -153,7 +158,7 @@ async def stream_chat_message(
                             "details": interrupt_val if isinstance(interrupt_val, dict) else {"details": str(interrupt_val)}
                         }
                         yield f"event: interrupt\ndata: {json.dumps(interrupt_payload)}\n\n"
-                        yield f"event: done\ndata: {json.dumps({'final_response': 'Approval required for sensitive operation.', 'approval_required': True, 'thread_id': thread_id, 'approval_status': 'PENDING'})}\n\n"
+                        yield f"event: done\ndata: {json.dumps({'final_response': 'Approval required for sensitive operation.', 'approval_required': True, 'thread_id': thread_id, 'approval_status': 'PENDING', 'cached': False})}\n\n"
                         return
 
                     final_state.update(node_output)
@@ -161,6 +166,7 @@ async def stream_chat_message(
                     # Pedagogical agent thoughts mapping
                     thought_map = {
                         "receive_message": "Message received and validated.",
+                        "semantic_cache_check": "Checking vector semantic cache for previous answers...",
                         "classify_intent": f"Classified intent as '{node_output.get('intent', 'unknown')}'.",
                         "router_node": "Verifying role-based permissions (RBAC)...",
                         "handle_greeting": "Synthesizing welcoming greeting...",
@@ -215,7 +221,9 @@ async def stream_chat_message(
                 "sources": final_state.get("rag_sources", []) or [],
                 "external_results": final_state.get("external_search_results"),
                 "approval_required": False,
-                "approval_status": final_state.get("approval_status")
+                "approval_status": final_state.get("approval_status"),
+                "cached": bool(final_state.get("cached", False)),
+                "cache_score": final_state.get("cache_score")
             }
             yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
 

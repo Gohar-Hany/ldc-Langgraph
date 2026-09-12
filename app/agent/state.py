@@ -44,3 +44,8 @@ class AgentState(TypedDict):
     approval_payload: Optional[Dict[str, Any]]
     approver_id: Optional[str]
 
+    # Phase 9: Vector Semantic Caching State
+    cached: Optional[bool]
+    cache_score: Optional[float]
+    bypass_cache: Optional[bool]
+

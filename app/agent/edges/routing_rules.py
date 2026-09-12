@@ -44,3 +44,16 @@ def route_after_rbac_check(state: AgentState) -> ResponseNodeName:
     target_node = routing_map.get(intent, "handle_fallback")
     logger.info(f"[RoutingRules] Routing intent '{intent.value if intent else 'None'}' to node '{target_node}'")
     return target_node
+
+
+def route_after_cache_check(state: AgentState) -> Literal["cache_hit", "cache_miss"]:
+    """
+    Conditional edge after semantic cache lookup:
+    - 'cache_hit': Query answered from cache, short-circuit directly to END.
+    - 'cache_miss': Query not cached, proceed with standard intent classification.
+    """
+    if state.get("cached") is True:
+        logger.info("[RoutingRules] Semantic cache HIT: routing directly to END.")
+        return "cache_hit"
+    return "cache_miss"
+

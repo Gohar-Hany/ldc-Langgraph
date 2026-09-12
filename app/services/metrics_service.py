@@ -26,6 +26,8 @@ class MetricsService:
         self.rag_queries_total = 0
         self.tool_calls_total = defaultdict(int)
         self.hitl_approvals_total = defaultdict(int)
+        self.cache_hits_total = 0
+        self.cache_misses_total = 0
 
     def record_request(self, method: str, path: str, status_code: int, duration_ms: float):
         with self._lock:
@@ -64,12 +66,27 @@ class MetricsService:
             key = "approved" if approved else "rejected"
             self.hitl_approvals_total[key] += 1
 
+    def record_cache_hit(self):
+        with self._lock:
+            self.cache_hits_total += 1
+
+    def record_cache_miss(self):
+        with self._lock:
+            self.cache_misses_total += 1
+
     def get_metrics_json(self) -> Dict[str, Any]:
         with self._lock:
             uptime_seconds = round(time.time() - self.start_time, 2)
             avg_latency = (
                 round(self.total_latency_ms / self.total_requests, 2)
                 if self.total_requests > 0
+                else 0.0
+            )
+
+            total_cache_lookups = self.cache_hits_total + self.cache_misses_total
+            cache_hit_rate = (
+                round((self.cache_hits_total / total_cache_lookups) * 100, 2)
+                if total_cache_lookups > 0
                 else 0.0
             )
 
@@ -85,6 +102,9 @@ class MetricsService:
                     "llm_calls_total": self.llm_calls_total,
                     "llm_errors_total": self.llm_errors_total,
                     "rag_queries_total": self.rag_queries_total,
+                    "cache_hits_total": self.cache_hits_total,
+                    "cache_misses_total": self.cache_misses_total,
+                    "cache_hit_rate_pct": cache_hit_rate,
                     "tool_calls_total": dict(self.tool_calls_total),
                     "hitl_approvals_total": dict(self.hitl_approvals_total)
                 }
@@ -128,6 +148,14 @@ class MetricsService:
                 f"# HELP agent_rag_queries_total Total knowledge retrieval operations in Qdrant",
                 f"# TYPE agent_rag_queries_total counter",
                 f"agent_rag_queries_total {self.rag_queries_total}",
+                "",
+                f"# HELP agent_semantic_cache_hits_total Total semantic cache hits (saved LLM invocations)",
+                f"# TYPE agent_semantic_cache_hits_total counter",
+                f"agent_semantic_cache_hits_total {self.cache_hits_total}",
+                "",
+                f"# HELP agent_semantic_cache_misses_total Total semantic cache misses",
+                f"# TYPE agent_semantic_cache_misses_total counter",
+                f"agent_semantic_cache_misses_total {self.cache_misses_total}",
                 ""
             ])
 

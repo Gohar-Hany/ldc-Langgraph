@@ -26,6 +26,21 @@ def handle_greeting_node(state: AgentState) -> Dict[str, Any]:
         "How can I assist you today? You can ask about IT policies, check support tickets, "
         "or request assistance."
     )
+
+    try:
+        from app.services.semantic_cache_service import semantic_cache_service
+        raw_role = state.get("user_role", "customer")
+        role_val = raw_role.value if hasattr(raw_role, "value") else str(raw_role)
+        query = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
+        semantic_cache_service.store(
+            query=query,
+            response=response,
+            intent="greeting",
+            user_role=role_val
+        )
+    except Exception as cache_err:
+        logger.debug(f"[Greeting: Cache Store Note] {cache_err}")
+
     return {
         "final_response": response,
         "execution_trace": _append_trace(trace, "handle_greeting")

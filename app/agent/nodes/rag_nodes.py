@@ -145,6 +145,22 @@ def rag_generate_node(state: AgentState) -> Dict[str, Any]:
         response = llm.invoke(messages)
         final_answer = response.content if hasattr(response, "content") else str(response)
 
+        # Store grounded response in vector semantic cache (Phase 9)
+        try:
+            from app.services.semantic_cache_service import semantic_cache_service
+            raw_role = state.get("user_role", "customer")
+            role_val = raw_role.value if hasattr(raw_role, "value") else str(raw_role)
+            cache_query = state.get("sanitized_message") or query
+            semantic_cache_service.store(
+                query=cache_query,
+                response=final_answer,
+                intent="knowledge_search",
+                user_role=role_val,
+                sources=sources
+            )
+        except Exception as cache_err:
+            logger.debug(f"[RAG: Cache Store Note] {cache_err}")
+
         return {
             "final_response": final_answer,
             "execution_trace": _append_trace(trace, "rag_generate")
@@ -158,6 +174,22 @@ def rag_generate_node(state: AgentState) -> Dict[str, Any]:
             f"**Sources & References:**\n" +
             "\n".join([f"- {src}" for src in sources])
         )
+
+        try:
+            from app.services.semantic_cache_service import semantic_cache_service
+            raw_role = state.get("user_role", "customer")
+            role_val = raw_role.value if hasattr(raw_role, "value") else str(raw_role)
+            cache_query = state.get("sanitized_message") or query
+            semantic_cache_service.store(
+                query=cache_query,
+                response=fallback_answer,
+                intent="knowledge_search",
+                user_role=role_val,
+                sources=sources
+            )
+        except Exception as cache_err:
+            logger.debug(f"[RAG: Cache Store Note] {cache_err}")
+
         return {
             "final_response": fallback_answer,
             "execution_trace": _append_trace(trace, "rag_generate", status="fallback")

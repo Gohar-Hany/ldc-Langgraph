@@ -51,6 +51,16 @@ class ChatResponse(BaseModel):
         description="Metadata details of the pending approval action"
     )
 
+    # Phase 9: Vector Semantic Caching fields
+    cached: bool = Field(
+        default=False,
+        description="Whether the response was served from vector semantic cache"
+    )
+    cache_score: Optional[float] = Field(
+        default=None,
+        description="Cosine similarity score for the cached match"
+    )
+
 
 class ApprovalDecisionRequest(BaseModel):
     approved: bool = Field(..., description="True to approve and execute, False to reject")

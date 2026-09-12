@@ -142,6 +142,24 @@ class Settings(BaseSettings):
         description="Checkpointer backend: 'postgres' for persistent DB storage or 'memory' for ephemeral testing"
     )
 
+    # Phase 9: FinOps & Latency Optimization (Vector Semantic Caching)
+    SEMANTIC_CACHE_ENABLED: bool = Field(
+        default=True,
+        description="Enable vector semantic caching for repeated and similar queries"
+    )
+    SEMANTIC_CACHE_THRESHOLD: float = Field(
+        default=0.92,
+        description="Minimum cosine similarity score required for a semantic cache hit"
+    )
+    SEMANTIC_CACHE_COLLECTION_NAME: str = Field(
+        default="enterprise_semantic_cache",
+        description="Qdrant collection name for storing semantic cache vectors"
+    )
+    SEMANTIC_CACHE_TTL_SECONDS: int = Field(
+        default=604800,
+        description="Time-To-Live in seconds for cached responses (default: 7 days)"
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:
