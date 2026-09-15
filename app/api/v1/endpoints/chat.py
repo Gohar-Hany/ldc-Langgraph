@@ -156,26 +156,49 @@ async def stream_chat_message(
     }
     config = {"configurable": {"thread_id": thread_id}}
 
-    # Pedagogical agent thought messages per node
-    THOUGHT_MAP = {
-        "receive_message": "Message received and validated.",
-        "semantic_cache_check": "Checking vector semantic cache for previous answers...",
-        "classify_intent": "Classifying intent...",
-        "router_node": "Verifying role-based permissions (RBAC)...",
-        "handle_greeting": "Synthesizing welcoming greeting...",
-        "rag_retrieve": "Searching enterprise knowledge base...",
-        "rag_grade": "Grading relevance of retrieved documents...",
-        "rag_rewrite": "Refining search query for better document retrieval...",
-        "rag_generate": "Formulating grounded answer with citations...",
-        "rag_fallback": "Applying enterprise fallback response...",
-        "handle_my_tickets_search": "Fetching user support tickets from database...",
-        "handle_ticket_create_update": "Executing ticket creation in database...",
-        "handle_external_api_search": "Querying external search and status API...",
-        "handle_sensitive_operation": "Evaluating sensitive operation permissions...",
-        "handle_database_query": "Executing diagnostic database query...",
-        "handle_unauthorized": "Access denied: User lacks required role permissions.",
-        "handle_fallback": "Synthesizing fallback response."
+    is_ar = any('\u0600' <= char <= '\u06FF' for char in body.message)
+
+    THOUGHT_MAP_AR = {
+        "receive_message": "تم استلام الطلب والتحقق من سلامة المدخلات.",
+        "semantic_cache_check": "فحص الإجابات المعتمدة في الذاكرة السريعة...",
+        "classify_intent": "تحديد مسار الخدمة ونوع الطلب التقني...",
+        "router_node": "التحقق من صلاحيات الحساب ومستوى الأمان...",
+        "handle_greeting": "صياغة الترحيب والتعريف بخدمات الدعم التقني...",
+        "rag_retrieve": "البحث في قاعدة المعرفة والوثائق التقنية المعتمدة...",
+        "rag_grade": "تقييم مدى مطابقة الوثائق المسترجعة للاستفسار...",
+        "rag_rewrite": "تحسين مصطلحات البحث للوصول لأدق التوجيهات...",
+        "rag_generate": "صياغة الحل الفني المدعوم بالمصادر الموثقة...",
+        "rag_fallback": "تجهيز التوجيه البديل لمتابعة الدعم الفني...",
+        "handle_my_tickets_search": "استرجاع تذاكر الدعم الفني الخاصة بالحساب...",
+        "handle_ticket_create_update": "تسجيل التذكرة وتوجيهها للفريق الهندسي...",
+        "handle_external_api_search": "الاستعلام عن حالة الخدمات والواجهات الخارجية...",
+        "handle_sensitive_operation": "تقييم العملية واعتماد موافقة المشرف (HITL)...",
+        "handle_database_query": "تحليل بنية الجداول (Schema) وتنفيذ الاستعلام الآمن...",
+        "handle_unauthorized": "التحقق من قيود الصلاحيات وإصدار التنبيه الإداري...",
+        "handle_fallback": "صياغة التوجيه العام لخدمات المنظومة..."
     }
+
+    THOUGHT_MAP_EN = {
+        "receive_message": "Message received and input verified.",
+        "semantic_cache_check": "Checking semantic cache for verified answers...",
+        "classify_intent": "Classifying service intent and technical context...",
+        "router_node": "Verifying role-based permissions and security clearance...",
+        "handle_greeting": "Formulating welcoming enterprise greeting...",
+        "rag_retrieve": "Searching approved enterprise knowledge base...",
+        "rag_grade": "Grading relevance of retrieved technical documents...",
+        "rag_rewrite": "Optimizing search keywords for maximum accuracy...",
+        "rag_generate": "Synthesizing grounded solution with citations...",
+        "rag_fallback": "Preparing alternative guidance and ticket escalation...",
+        "handle_my_tickets_search": "Fetching support tickets for user account...",
+        "handle_ticket_create_update": "Dispatching ticket to engineering queue...",
+        "handle_external_api_search": "Querying external service status and telemetry...",
+        "handle_sensitive_operation": "Evaluating sensitive action and supervisor gate...",
+        "handle_database_query": "Analyzing schema context and executing safe query...",
+        "handle_unauthorized": "Evaluating role authorization limits...",
+        "handle_fallback": "Formulating general service guidance..."
+    }
+
+    THOUGHT_MAP = THOUGHT_MAP_AR if is_ar else THOUGHT_MAP_EN
 
     async def event_generator():
         try:
@@ -206,7 +229,11 @@ async def stream_chat_message(
                     # Enrich classify_intent thought with detected intent
                     thought_msg = THOUGHT_MAP.get(node_name, f"Completed node: {node_name}")
                     if node_name == "classify_intent" and node_output.get("intent"):
-                        thought_msg = f"Classified intent as '{_clean_intent(node_output.get('intent'))}'."
+                        cleaned = _clean_intent(node_output.get("intent"))
+                        if is_ar:
+                            thought_msg = f"تم تحديد مسار الطلب بنجاح: '{cleaned}'."
+                        else:
+                            thought_msg = f"Routed inquiry to service: '{cleaned}'."
 
                     step_payload = {
                         "node": node_name,

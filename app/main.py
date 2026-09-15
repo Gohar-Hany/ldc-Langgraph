@@ -109,7 +109,7 @@ def create_application() -> FastAPI:
         # 3. LLM Service check
         try:
             from app.services.llm_service import llm_service
-            llm_ok = llm_service.client is not None
+            llm_ok = (getattr(llm_service, "client", None) is not None) or (llm_service.get_chat_model() is not None if hasattr(llm_service, "get_chat_model") else False)
             dependencies["llm_orchestrator"] = {"status": "ready" if llm_ok else "unconfigured", "provider": settings.LLM_PROVIDER}
         except Exception as e:
             dependencies["llm_orchestrator"] = {"status": "degraded", "error": str(e)}

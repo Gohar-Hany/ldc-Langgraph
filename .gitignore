@@ -31,3 +31,10 @@ Thumbs.db
 
 # Custom AI Skills & Knowledge Hub
 skills/
+
+# Node & Frontend Build
+node_modules/
+dist/
+dist-ssr/
+.vercel/
+

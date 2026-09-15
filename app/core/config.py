@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Literal
+from typing import List, Literal, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -64,10 +64,25 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # CORS Configuration (Whitelist specific origins — never use "*" with credentials)
-    CORS_ALLOWED_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080"],
+    CORS_ALLOWED_ORIGINS: Union[List[str], str] = Field(
+        default=["http://localhost:3000", "http://localhost:3001", "http://localhost:8080"],
         description="Whitelisted CORS origins. Set via comma-separated env var CORS_ALLOWED_ORIGINS."
     )
+
+    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                import json
+                try:
+                    return json.loads(v_stripped)
+                except Exception:
+                    pass
+            return [origin.strip() for origin in v_stripped.split(",") if origin.strip()]
+        return v
+
 
     # Qdrant Cloud Configuration
     QDRANT_URL: str = Field(

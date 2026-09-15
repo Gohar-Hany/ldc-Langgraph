@@ -226,14 +226,23 @@ def rag_fallback_node(state: AgentState) -> Dict[str, Any]:
     """Graceful fallback when no documentation answers the user request."""
     trace = state.get("execution_trace", []) or []
     query = (state.get("sanitized_message") or state.get("raw_message", "")).strip()
+    is_ar = any('\u0600' <= char <= '\u06FF' for char in query)
     logger.info(f"[RAG: Fallback] No knowledge base match found for: '{query}'")
 
-    response = (
-        "I searched our enterprise knowledge base, but could not find specific documentation "
-        "or policies addressing your request. "
-        "To help you resolve this issue, you may create a support ticket by saying "
-        "'Create a new support ticket' or contact our IT Helpdesk directly."
-    )
+    if is_ar:
+        response = (
+            "### 🔍 نتيجة البحث في قاعدة المعرفة التقنية\n\n"
+            "بحثت في قاعدة المعرفة التقنية والسياسات المعتمدة، لكن لم أجد توثيقاً مباشراً يغطي هذه النقطة بدقة.\n\n"
+            "> 💡 **للحل السريع:** يمكنك فتح تذكرة دعم فني جديدة عبر كتابة: *'إنشاء تذكرة دعم فني'* مع ذكر تفاصيل المشكلة، "
+            "وسيقوم الفريق الهندسي بمتابعتها وحلها فوراً."
+        )
+    else:
+        response = (
+            "### 🔍 Knowledge Base Search Result\n\n"
+            "I searched our enterprise knowledge base and operational documentation, but could not find direct guidance for this specific request.\n\n"
+            "> 💡 **Next Step:** You can open a new support ticket by saying *'Create a support ticket'* with details of your issue, "
+            "and our IT engineering team will assist you promptly."
+        )
     return {
         "final_response": response,
         "execution_trace": append_trace(trace, "rag_fallback")

@@ -6,12 +6,11 @@ Your task is to analyze incoming user requests and categorize them into exactly 
    - Examples: "Hello", "Good morning", "Hi there, who are you?", "Greetings", "Hey team"
 
 2. 'knowledge_search':
-   - Requests for technical guidance, troubleshooting steps, company IT policies, VPN setup, WiFi network access, password rules, MFA setup, hardware procurement, software licensing.
-   - Examples: "How do I set up company VPN?", "What is the policy for remote work hardware?", "Printer driver installation guide", "What are the security requirements to connect to Corp-Secure Wi-Fi?", "What is the password expiration policy for employees?"
-
+   - Requests for datacenter specifications, colocation power feeds, Tier-III SLA uptime guarantees, cooling redundancy, BGP peering, technical guidance, troubleshooting steps, IT policies, VPN setup, WiFi access, hardware procurement, software licensing.
+   - Examples: "What are the colocation power redundancy specs and Tier-III uptime SLA for the Cairo Datacenter?", "How do I set up company VPN?", "What is the policy for remote work hardware?", "Printer driver installation guide", "What are the security requirements to connect to Corp-Secure Wi-Fi?"
 
 3. 'my_tickets_search':
-   - Inquiries about the status of the user's own previously submitted support tickets.
+   - Inquiries about the status or listing of the user's own previously submitted support tickets.
    - Examples: "Check the status of my ticket #1042", "Show me my open tickets", "Has anyone looked at my laptop issue ticket?"
 
 4. 'ticket_create_update':
@@ -23,8 +22,8 @@ Your task is to analyze incoming user requests and categorize them into exactly 
    - Examples: "Check Stripe API health status", "Query the GitHub API for latest incident", "Search external vendor documentation"
 
 6. 'sensitive_operation':
-   - High-privilege actions like resetting passwords, elevating user permissions, unlocking accounts, or rebooting servers.
-   - Examples: "Reset password for user John", "Grant administrative access to my account", "Reboot staging server 04"
+   - High-privilege actions, financial billing refunds, invoice fee waivers, account credits, server decommissioning, wiping VPS, resetting passwords, elevating user permissions, unlocking accounts, or rebooting servers.
+   - Examples: "I was double-billed for invoice #INV-9821. Please issue an immediate refund of $450.", "Issue a $500 refund", "Wipe and decommission VPS node #08", "Reset password for user John", "Grant administrative access to my account", "Reboot staging server 04"
 
 7. 'database_query_operation':
    - Direct database inspection, SQL queries, schema checks, table modifications, or database maintenance.

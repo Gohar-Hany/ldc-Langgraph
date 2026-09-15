@@ -65,6 +65,11 @@ class LLMService:
 
         logger.info("No active remote LLM client initialized. Using deterministic rule-based classifier.")
 
+    @property
+    def client(self) -> Optional[ChatOpenAI]:
+        """Returns the active ChatOpenAI client instance."""
+        return self._llm
+
     def get_chat_model(self) -> Optional[ChatOpenAI]:
         """Returns the active ChatOpenAI model instance."""
         return self._llm
@@ -101,10 +106,15 @@ class LLMService:
             )
 
         # 2. Sensitive Operations (Senior Agent / Admin)
-        if any(w in text_lower for w in ["reset password", "elevate permission", "superuser", "reboot server", "grant admin", "unlock account", "صلاحيات", "اعادة تعيين"]):
+        if any(w in text_lower for w in [
+            "refund", "double-billed", "billing", "invoice", "charge", "wipe vps", 
+            "wipe", "delete server", "terminate server", "deprovision", "reset password", 
+            "elevate permission", "superuser", "reboot server", "grant admin", "unlock account", 
+            "صلاحيات", "اعادة تعيين", "استرداد", "استرجاع", "فاتورة", "حذف سيرفر"
+        ]):
             return IntentClassificationOutput(
                 intent=IntentType.SENSITIVE_OPERATION,
-                confidence=0.92,
+                confidence=0.96,
                 reasoning="Message involves sensitive operational actions requiring elevated privileges."
             )
 
@@ -125,10 +135,10 @@ class LLMService:
             )
 
         # 5. My Tickets Search (Customer+)
-        if ("ticket" in text_lower or "tickets" in text_lower or "تذاكر" in text_lower or "تذكرتي" in text_lower) and any(w in text_lower for w in ["my", "status", "open", "check", "show", "حالة", "استعراض"]):
+        if ("ticket" in text_lower or "tickets" in text_lower or "تذاكر" in text_lower or "تذكرتي" in text_lower or "تذاكري" in text_lower) and any(w in text_lower for w in ["my", "status", "open", "check", "show", "list", "حالة", "استعراض", "مفتوحة"]):
             return IntentClassificationOutput(
                 intent=IntentType.MY_TICKETS_SEARCH,
-                confidence=0.92,
+                confidence=0.94,
                 reasoning="Message asks to view or check status of user's own tickets."
             )
 
@@ -136,11 +146,14 @@ class LLMService:
         if any(w in text_lower for w in [
             "how to", "vpn", "wifi", "wi-fi", "wireless", "policy", "documentation", 
             "guide", "setup", "configure", "requirements", "password", "mfa", 
-            "hardware", "license", "licensing", "procurement", "كيفية", "وثائق", "دليل", "واي فاي", "سياسة"
+            "hardware", "license", "licensing", "procurement", "cairo", "datacenter", 
+            "colocation", "sla", "uptime", "tier-iii", "tier 3", "power", "cooling", 
+            "generator", "peering", "bgp", "bandwidth", "redundancy", "specs", "specification",
+            "كيفية", "وثائق", "دليل", "واي فاي", "سياسة", "مركز البيانات", "كوليكيشن"
         ]):
             return IntentClassificationOutput(
                 intent=IntentType.KNOWLEDGE_SEARCH,
-                confidence=0.89,
+                confidence=0.92,
                 reasoning="Message requests technical support guidelines or knowledge base documentation."
             )
 
